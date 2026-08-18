@@ -86,9 +86,12 @@ def write_cert(k: int, stem: str, specs):
     n = len(states)
     ranges = [(lo, min(lo + chunk_size, n)) for lo in range(0, n, chunk_size)]
 
-    # --- data module: the state/transition literal, elaborated in its own
-    # process so the literal's memory footprint never overlaps with kernel
-    # checking of the proof module ---
+    # --- data module: the state/transition literals, elaborated in their own
+    # process so the memory footprint never overlaps with kernel checking of
+    # the proof modules.  Both arrays are emitted as bounded-size parts
+    # concatenated with ++: a single 76080-element literal overwhelms the
+    # elaborator in the Mathlib environment (cascading 'Function expected'
+    # errors near the end of the table) even though core Lean copes ---
     dpath = OUT / f"{stem}Data.lean"
     with dpath.open("w", encoding="utf-8", newline="\n") as f:
         f.write("import A277223.CarryObstruction.Certificate\n\n")
@@ -97,22 +100,34 @@ def write_cert(k: int, stem: str, specs):
         f.write(f"States: {n}; mass-`{k}` terminal states: {terminal_count}.\n")
         f.write("The generator is `scripts/generate_carry_certificates.py`; this file is\n")
         f.write("re-checked by Lean and is not trusted as an external oracle.\n")
+        f.write("Both tables are emitted as bounded parts concatenated with `++`;\n")
+        f.write("a single table-sized literal overruns the elaborator.\n")
         f.write("-/\n\n")
         f.write("namespace A277223\nnamespace CarryObstruction\nnamespace Certificate\n\n")
         f.write("set_option maxHeartbeats 0\n")
         f.write("set_option maxRecDepth 1000000\n")
         f.write(lean_specs(f"cert{k}", specs))
         f.write("\n")
+
+        def write_parts(prefix, ty, entries, per_part, per_line, render):
+            parts = [entries[i:i + per_part] for i in range(0, len(entries), per_part)]
+            for p, part in enumerate(parts):
+                f.write(f"def {prefix}Part{p} : Array {ty} := #[\n")
+                for chunk in chunks(part, per_line):
+                    f.write("    " + " ".join(render(x) + "," for x in chunk) + "\n")
+                f.write("  ]\n\n")
+            f.write(f"def {prefix} : Array {ty} := " +
+                    " ++ ".join(f"{prefix}Part{p}" for p in range(len(parts))) + "\n\n")
+
+        write_parts(
+            f"{cert_name}States", "MachineState", states, 2000, 4, lean_state)
+        write_parts(
+            f"{cert_name}Next", "ℕ", flat, 8000, 30, str)
+
         f.write(f"def {cert_name} : CarryCertificate := {{\n")
         f.write(f"  specs := cert{k}Specs\n")
-        f.write("  states := #[\n")
-        for chunk in chunks(states, 4):
-            f.write("    " + ",\n    ".join(lean_state(s) for s in chunk) + ",\n")
-        f.write("  ]\n")
-        f.write("  next := #[\n")
-        for chunk in chunks(flat, 30):
-            f.write("    " + " ".join(map(str, chunk)) + ",\n")
-        f.write("  ]\n")
+        f.write(f"  states := {cert_name}States\n")
+        f.write(f"  next := {cert_name}Next\n")
         f.write("  initial := 0\n")
         f.write("}\n\n")
         f.write("end Certificate\nend CarryObstruction\nend A277223\n")
