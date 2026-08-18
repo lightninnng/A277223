@@ -129,13 +129,13 @@ def write_cert(k: int, stem: str, specs):
     # proofs are split at most five per module file: kernel-decide allocations
     # accumulate within one lean process, so each process checks a bounded
     # number of ranges and stays well inside a 16 GB build host ---
-    chunks_per_file = 10
+    chunks_per_file = 2
     parts = [ranges[i:i + chunks_per_file] for i in range(0, len(ranges), chunks_per_file)]
     part_names = []
     for p in range(len(parts)):
         # the final part lands in the module named `{stem}` itself, so the
         # existing importers (`Small.lean`) keep working unchanged
-        part_names.append(stem if p == len(parts) - 1 else f"{stem}{chr(ord('A') + p)}")
+        part_names.append(stem if p == len(parts) - 1 else f"{stem}P{p:02d}")
     prev = f"{stem}Data"
     for p, (part, part_stem) in enumerate(zip(parts, part_names)):
         is_final = p == len(parts) - 1

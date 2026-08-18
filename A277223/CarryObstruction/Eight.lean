@@ -1,4 +1,4 @@
-import A277223.CarryObstruction.EightE
+import A277223.CarryObstruction.EightP28
 
 /-!
 Validity proof for the generated carry certificate of target `8`.
@@ -6,7 +6,7 @@ The data lives in `EightData.lean`; each bounded index range is
 discharged by its own `decide +kernel` (a whole-table single decide
 does not fit in the memory of a 16 GB build host), and
 `Certificate.valid_of_rangeOK` reassembles complete validity.
-Final range part; earlier parts live in EightA, EightB, EightC, EightD, EightE.
+Final range part; earlier parts live in EightP00, EightP01, EightP02, EightP03, EightP04, EightP05, EightP06, EightP07, EightP08, EightP09, EightP10, EightP11, EightP12, EightP13, EightP14, EightP15, EightP16, EightP17, EightP18, EightP19, EightP20, EightP21, EightP22, EightP23, EightP24, EightP25, EightP26, EightP27, EightP28.
 -/
 
 namespace A277223
@@ -15,46 +15,6 @@ namespace Certificate
 
 set_option maxHeartbeats 0
 set_option maxRecDepth 1000000
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert8_chunk_50 : rangeOK 8 cert8 6400 6528 = true := by
-  decide +kernel
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert8_chunk_51 : rangeOK 8 cert8 6528 6656 = true := by
-  decide +kernel
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert8_chunk_52 : rangeOK 8 cert8 6656 6784 = true := by
-  decide +kernel
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert8_chunk_53 : rangeOK 8 cert8 6784 6912 = true := by
-  decide +kernel
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert8_chunk_54 : rangeOK 8 cert8 6912 7040 = true := by
-  decide +kernel
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert8_chunk_55 : rangeOK 8 cert8 7040 7168 = true := by
-  decide +kernel
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert8_chunk_56 : rangeOK 8 cert8 7168 7296 = true := by
-  decide +kernel
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert8_chunk_57 : rangeOK 8 cert8 7296 7424 = true := by
-  decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in

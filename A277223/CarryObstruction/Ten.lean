@@ -1,4 +1,4 @@
-import A277223.CarryObstruction.TenA
+import A277223.CarryObstruction.TenP05
 
 /-!
 Validity proof for the generated carry certificate of target `10`.
@@ -6,7 +6,7 @@ The data lives in `TenData.lean`; each bounded index range is
 discharged by its own `decide +kernel` (a whole-table single decide
 does not fit in the memory of a 16 GB build host), and
 `Certificate.valid_of_rangeOK` reassembles complete validity.
-Final range part; earlier parts live in TenA.
+Final range part; earlier parts live in TenP00, TenP01, TenP02, TenP03, TenP04, TenP05.
 -/
 
 namespace A277223
@@ -15,16 +15,6 @@ namespace Certificate
 
 set_option maxHeartbeats 0
 set_option maxRecDepth 1000000
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert10_chunk_10 : rangeOK 10 cert10 1280 1408 = true := by
-  decide +kernel
-
-set_option maxHeartbeats 0 in
-set_option maxRecDepth 1000000 in
-theorem cert10_chunk_11 : rangeOK 10 cert10 1408 1536 = true := by
-  decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
