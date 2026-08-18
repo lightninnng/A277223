@@ -243,7 +243,7 @@ the chunk results with an ordinary proof term.
 
 /-- Boolean reflection of the per-state obligations of `CarryCertificate.Valid`. -/
 def stateOKBool (k : ℕ) (cert : CarryCertificate) (i : ℕ) : Bool :=
-  ((List.finRange 10).all fun d =>
+  ((List.range 10).all fun d =>
       if (stateAt cert i).mass + d ≤ k then
         decide (nextId cert i d < cert.states.size) &&
           decide (stateAt cert (nextId cert i d) = stepState cert.specs (stateAt cert i) d)
@@ -260,7 +260,7 @@ theorem stateOK_of_bool {k : ℕ} {cert : CarryCertificate} {i : ℕ}
   rw [stateOKBool, Bool.and_eq_true] at h
   obtain ⟨hall, hterm⟩ := h
   refine ⟨fun d hd hle => ?_, fun hmass => ?_⟩
-  · have hmem : d ∈ List.finRange 10 := List.mem_finRange.mpr hd
+  · have hmem : d ∈ List.range 10 := List.mem_range.mpr hd
     have hdall := List.all_eq_true.1 hall d hmem
     rw [if_pos hle] at hdall
     rw [Bool.and_eq_true] at hdall
