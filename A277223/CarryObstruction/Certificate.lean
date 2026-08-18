@@ -228,6 +228,80 @@ instance instDecidableValid (k : ℕ) (cert : CarryCertificate) : Decidable (cer
   unfold CarryCertificate.Valid
   exact inferInstance
 
+/-!
+### Range-restricted certificate checks
+
+A single `decide +kernel` over the whole state table of a large certificate
+(the `k = 8` machine has 7608 states) does not fit into the memory of a
+standard 16 GB build host: the kernel reduction of the complete `Valid`
+proposition allocates for every state simultaneously.  The per-state
+obligations are therefore reflected into a boolean checker over a state-index
+range; a certificate file discharges each bounded range with its own
+`decide +kernel`, and `valid_of_rangeOK` reassembles complete validity from
+the chunk results with an ordinary proof term.
+-/
+
+/-- Boolean reflection of the per-state obligations of `CarryCertificate.Valid`. -/
+def stateOKBool (k : ℕ) (cert : CarryCertificate) (i : ℕ) : Bool :=
+  ((List.finRange 10).all fun d =>
+      if (stateAt cert i).mass + d ≤ k then
+        decide (nextId cert i d < cert.states.size) &&
+          decide (stateAt cert (nextId cert i d) = stepState cert.specs (stateAt cert i) d)
+      else true) &&
+  (if (stateAt cert i).mass = k then terminalHit k cert.specs (stateAt cert i).lanes else true)
+
+theorem stateOK_of_bool {k : ℕ} {cert : CarryCertificate} {i : ℕ}
+    (h : stateOKBool k cert i = true) :
+    (∀ d : ℕ, d < 10 →
+      (stateAt cert i).mass + d ≤ k →
+        nextId cert i d < cert.states.size ∧
+          stateAt cert (nextId cert i d) = stepState cert.specs (stateAt cert i) d) ∧
+    ((stateAt cert i).mass = k → terminalHit k cert.specs (stateAt cert i).lanes = true) := by
+  rw [stateOKBool, Bool.and_eq_true] at h
+  obtain ⟨hall, hterm⟩ := h
+  refine ⟨fun d hd hle => ?_, fun hmass => ?_⟩
+  · have hmem : d ∈ List.finRange 10 := List.mem_finRange.mpr hd
+    have hdall := List.all_eq_true.1 hall d hmem
+    rw [if_pos hle] at hdall
+    rw [Bool.and_eq_true] at hdall
+    exact ⟨of_decide_eq_true hdall.1, of_decide_eq_true hdall.2⟩
+  · rw [if_pos hmass] at hterm
+    exact hterm
+
+/-- Boolean chunk check: every state index in `[lo, hi)` passes `stateOKBool`. -/
+def rangeOK (k : ℕ) (cert : CarryCertificate) (lo hi : ℕ) : Bool :=
+  (List.range hi).all fun i =>
+    if lo ≤ i then stateOKBool k cert i else true
+
+theorem stateOK_of_rangeOK {k : ℕ} {cert : CarryCertificate} {lo hi i : ℕ}
+    (h : rangeOK k cert lo hi = true) (hlo : lo ≤ i) (hhi : i < hi) :
+    (∀ d : ℕ, d < 10 →
+      (stateAt cert i).mass + d ≤ k →
+        nextId cert i d < cert.states.size ∧
+          stateAt cert (nextId cert i d) = stepState cert.specs (stateAt cert i) d) ∧
+    ((stateAt cert i).mass = k → terminalHit k cert.specs (stateAt cert i).lanes = true) := by
+  have hmem : i ∈ List.range hi := List.mem_range.mpr hhi
+  have hdall := List.all_eq_true.1 h i hmem
+  rw [if_pos hlo] at hdall
+  exact stateOK_of_bool hdall
+
+/-- Assemble `CarryCertificate.Valid` from bounded range checks. -/
+theorem valid_of_rangeOK {k : ℕ} {cert : CarryCertificate}
+    (hsize : cert.next.size = 10 * cert.states.size)
+    (hinit : cert.initial < cert.states.size)
+    (hinitstate : stateAt cert cert.initial = initialState cert.specs)
+    (hcover : ∀ i, i < cert.states.size →
+      ∃ lo hi, lo ≤ i ∧ i < hi ∧ rangeOK k cert lo hi = true) :
+    cert.Valid k := by
+  unfold CarryCertificate.Valid
+  refine ⟨hsize, hinit, hinitstate, ?_, ?_⟩
+  · intro i d hcond
+    obtain ⟨lo, hi, hlo, hhi, hok⟩ := hcover i.val i.isLt
+    exact (stateOK_of_rangeOK hok hlo hhi).1 d.val d.isLt hcond
+  · intro i hmass
+    obtain ⟨lo, hi, hlo, hhi, hok⟩ := hcover i.val i.isLt
+    exact (stateOK_of_rangeOK hok hlo hhi).2 hmass
+
 /-- Follow certificate transition IDs. -/
 def runIdFrom (cert : CarryCertificate) : ℕ → List ℕ → ℕ
   | i, [] => i

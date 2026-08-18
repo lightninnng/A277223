@@ -80,15 +80,21 @@ def chunks(seq, n):
 
 def write_cert(k: int, stem: str, specs):
     states, flat, terminal_count = generate(k, specs)
-    path = OUT / f"{stem}.lean"
-    spec_name = f"{stem.lower()}"
     cert_name = f"cert{k}"
     theorem_name = "eight" if k == 8 else "ten"
-    with path.open("w", encoding="utf-8") as f:
+    chunk_size = 512
+    n = len(states)
+    ranges = [(lo, min(lo + chunk_size, n)) for lo in range(0, n, chunk_size)]
+
+    # --- data module: the state/transition literal, elaborated in its own
+    # process so the literal's memory footprint never overlaps with kernel
+    # checking of the proof module ---
+    dpath = OUT / f"{stem}Data.lean"
+    with dpath.open("w", encoding="utf-8", newline="\n") as f:
         f.write("import A277223.CarryObstruction.Certificate\n\n")
         f.write("/-!\n")
-        f.write(f"Generated exact digit-mass carry certificate for target `{k}`.\n")
-        f.write(f"States: {len(states)}; mass-`{k}` terminal states: {terminal_count}.\n")
+        f.write(f"Generated exact digit-mass carry data for target `{k}`.\n")
+        f.write(f"States: {n}; mass-`{k}` terminal states: {terminal_count}.\n")
         f.write("The generator is `scripts/generate_carry_certificates.py`; this file is\n")
         f.write("re-checked by Lean and is not trusted as an external oracle.\n")
         f.write("-/\n\n")
@@ -105,17 +111,74 @@ def write_cert(k: int, stem: str, specs):
         f.write("  ]\n")
         f.write("  next := #[\n")
         for chunk in chunks(flat, 30):
-            f.write("    " + ", ".join(map(str, chunk)) + ",\n")
+            f.write("    " + " ".join(map(str, chunk)) + ",\n")
         f.write("  ]\n")
         f.write("  initial := 0\n")
         f.write("}\n\n")
-        f.write("set_option maxHeartbeats 0 in\n")
-        f.write("set_option maxRecDepth 1000000 in\n")
-        f.write(f"theorem {cert_name}_valid : {cert_name}.Valid {k} := by\n")
-        f.write("  decide +kernel\n\n")
-        f.write(f"theorem carryObstruction_{theorem_name} : CarryObstruction {k} :=\n")
-        f.write(f"  carryObstruction_of_valid_certificate {cert_name}_valid\n\n")
         f.write("end Certificate\nend CarryObstruction\nend A277223\n")
+
+    # --- proof modules: bounded-range kernel checks plus assembly.  Chunk
+    # proofs are split at most five per module file: kernel-decide allocations
+    # accumulate within one lean process, so each process checks a bounded
+    # number of ranges and stays well inside a 16 GB build host ---
+    chunks_per_file = 5
+    parts = [ranges[i:i + chunks_per_file] for i in range(0, len(ranges), chunks_per_file)]
+    part_names = []
+    for p in range(len(parts)):
+        # the final part lands in the module named `{stem}` itself, so the
+        # existing importers (`Small.lean`) keep working unchanged
+        part_names.append(stem if p == len(parts) - 1 else f"{stem}{chr(ord('A') + p)}")
+    prev = f"{stem}Data"
+    for p, (part, part_stem) in enumerate(zip(parts, part_names)):
+        is_final = p == len(parts) - 1
+        path = OUT / f"{part_stem}.lean"
+        with path.open("w", encoding="utf-8", newline="\n") as f:
+            f.write(f"import A277223.CarryObstruction.{prev}\n\n")
+            f.write("/-!\n")
+            if is_final:
+                f.write(f"Validity proof for the generated carry certificate of target `{k}`.\n")
+                f.write(f"The data lives in `{stem}Data.lean`; each bounded index range is\n")
+                f.write("discharged by its own `decide +kernel` (a whole-table single decide\n")
+                f.write("does not fit in the memory of a 16 GB build host), and\n")
+                f.write("`Certificate.valid_of_rangeOK` reassembles complete validity.\n")
+                f.write(f"Final range part; earlier parts live in {', '.join(n for n in part_names if n != stem)}.\n")
+            else:
+                f.write(f"Range checks {part[0][0]}..{part[-1][1]} of the generated carry\n")
+                f.write(f"certificate for target `{k}`, split out to bound process memory.\n")
+            f.write("-/\n\n")
+            f.write("namespace A277223\nnamespace CarryObstruction\nnamespace Certificate\n\n")
+            f.write("set_option maxHeartbeats 0\n")
+            f.write("set_option maxRecDepth 1000000\n\n")
+            base = p * chunks_per_file
+            for idx, (lo, hi) in enumerate(part):
+                f.write("set_option maxHeartbeats 0 in\n")
+                f.write("set_option maxRecDepth 1000000 in\n")
+                f.write(f"theorem {cert_name}_chunk_{base + idx} : rangeOK {k} {cert_name} {lo} {hi} = true := by\n")
+                f.write("  decide +kernel\n\n")
+            if is_final:
+                f.write("set_option maxHeartbeats 0 in\n")
+                f.write("set_option maxRecDepth 1000000 in\n")
+                f.write(f"theorem {cert_name}_size : {cert_name}.states.size = {n} := by\n")
+                f.write("  decide +kernel\n\n")
+                f.write("set_option maxHeartbeats 0 in\n")
+                f.write("set_option maxRecDepth 1000000 in\n")
+                f.write(f"theorem {cert_name}_header : {cert_name}.next.size = 10 * {cert_name}.states.size ∧\n")
+                f.write(f"    {cert_name}.initial < {cert_name}.states.size ∧\n")
+                f.write(f"    stateAt {cert_name} {cert_name}.initial = initialState {cert_name}.specs := by\n")
+                f.write("  decide +kernel\n\n")
+                f.write(f"theorem {cert_name}_valid : {cert_name}.Valid {k} := by\n")
+                f.write(f"  refine valid_of_rangeOK {cert_name}_header.1 {cert_name}_header.2.1 {cert_name}_header.2.2 ?_\n")
+                f.write("  intro i hi\n")
+                f.write(f"  rw [{cert_name}_size] at hi\n")
+                for idx, (lo, hi_r) in enumerate(ranges[:-1]):
+                    f.write(f"  by_cases h{idx} : i < {hi_r}\n")
+                    f.write(f"  · exact ⟨{lo}, {hi_r}, by omega, by omega, {cert_name}_chunk_{idx}⟩\n")
+                lo, hi_r = ranges[-1]
+                f.write(f"  · exact ⟨{lo}, {hi_r}, by omega, by omega, {cert_name}_chunk_{len(ranges) - 1}⟩\n")
+                f.write(f"theorem carryObstruction_{theorem_name} : CarryObstruction {k} :=\n")
+                f.write(f"  carryObstruction_of_valid_certificate {cert_name}_valid\n\n")
+            f.write("end Certificate\nend CarryObstruction\nend A277223\n")
+        prev = part_stem
     return path, len(states), terminal_count
 
 
