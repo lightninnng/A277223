@@ -293,7 +293,7 @@ theorem stateOK_of_rangeOK {k : ℕ} {cert : CarryCertificate} {lo hi i : ℕ}
 
 /-- Assemble `CarryCertificate.Valid` from bounded range checks. -/
 theorem valid_of_rangeOK {k : ℕ} {cert : CarryCertificate}
-    (hsize : cert.next.size = 10 * cert.states.size)
+    (hsize : cert.next.size = cert.states.size)
     (hinit : cert.initial < cert.states.size)
     (hinitstate : stateAt cert cert.initial = initialState cert.specs)
     (hcover : ∀ i, i < cert.states.size →
