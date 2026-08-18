@@ -6,3 +6,4 @@ paper/*.log
 paper/*.out
 paper/*.pdf
 dryrun/
+__pycache__/
