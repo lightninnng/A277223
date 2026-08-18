@@ -40,6 +40,31 @@ jobs:
           grep -Fx 'leanprover/lean4:v4.32.2' lean-toolchain
           grep -F 'rev = "v4.32.2"' lakefile.toml
 
+      - name: Install elan
+        run: |
+          curl -L https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          sh elan-init.sh -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Fetch dependencies and Mathlib build cache
+        run: lake exe cache get
+
+      # The generated carry certificates (Eight: 7608 states, Ten: 1543) and the
+      # two parameterized family modules are elaborated one per lake process.
+      # Lake schedules independent modules concurrently and their combined
+      # memory footprint exhausts the 16 GB runner, killing the job.
+      - name: Build Eight certificate (heavy, sequential)
+        run: lake build A277223.CarryObstruction.Eight
+
+      - name: Build Ten certificate (heavy, sequential)
+        run: lake build A277223.CarryObstruction.Ten
+
+      - name: Build SevenFamily (heavy, sequential)
+        run: lake build A277223.PeriodicCrossing.SevenFamily
+
+      - name: Build ElevenFamily (heavy, sequential)
+        run: lake build A277223.PeriodicCrossing.ElevenFamily
+
       - uses: leanprover/lean-action@v1
         with:
           build: true
