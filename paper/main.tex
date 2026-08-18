@@ -1,0 +1,1112 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=28mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amsthm,mathtools}
+\usepackage{newtxtext,newtxmath}
+\usepackage{booktabs,array,longtable}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[nameinlink,noabbrev]{cleveref}
+
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,citecolor=blue!55!black,urlcolor=blue!55!black}
+\setlist{nosep}
+\setlength{\parindent}{1.2em}
+\setlength{\parskip}{0pt}
+\setlength{\textfloatsep}{14pt plus 2pt minus 3pt}
+\setlength{\floatsep}{11pt plus 2pt minus 2pt}
+\emergencystretch=2em
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\ds}{\operatorname{s}}
+\newcommand{\Good}{\operatorname{Good}}
+\newcommand{\MaxGood}{\operatorname{MaxGood}}
+\newcommand{\Def}{\Delta}
+\newcommand{\Nseven}{N_{7}}
+\newcommand{\Neleven}{N_{11}}
+\newcommand{\Nsevenfam}{N^{(7)}}
+\newcommand{\Nelevenfam}{N^{(11)}}
+
+\title{Carry Obstructions and Infinite Periodic-Crossing Families in a Decimal Digit-Sum Multiplier Problem}
+\author{Anonymous manuscript}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+For a positive integer $n$, let $a(n)$ be the largest nonnegative integer $k$ satisfying the decimal digit-sum equation $\ds(kn)=k$, with $a(n)=0$ if there is no positive solution.  This is the multiplier formulation underlying OEIS A277223.  We develop two structural mechanisms for this equation.  \emph{Carry obstruction} proves that the small Good multipliers $1,2,3,4,5,6,8,10$ are necessarily nonterminal: a decimal rescaling, together with an exact carry-defect identity and first-carry localization, forces a larger Good multiplier.  \emph{Periodic crossing} studies the integer defect $\Def_N(k)=\ds(kN)-k$; if $p$ is Good, digit-sum subadditivity makes $\Def_N$ nonincreasing in every residue class modulo $p$.
+
+The periodic method yields two explicit, nontrivial infinite families.  For every $t\ge0$ we construct $N^{(7)}_t$ with $a(N^{(7)}_t)=7$ and a second family $N^{(11)}_t$ with $a(N^{(11)}_t)=11$.  The $7$-family begins with the compact $152$-digit witness
+\[
+ \frac{5\cdot10^{152}+11}{7}.
+\]
+For $11$ we also retain the much smaller $52$-digit witness
+\[
+ \frac{9\cdot10^{52}+2}{11},
+\]
+while the infinite family is chosen separately so that all ten nonzero residue classes cross at the same pure decimal boundary.  As an application we obtain the exact small-value spectrum
+\[
+  \{a(n):a(n)<12\}=\{0,7,9,11\},
+\]
+thereby refuting the OEIS conjecture that only $0$ and $9$ occur below $12$.  A companion Lean 4/Mathlib development mirrors the two-module proof architecture.  Machine-certification status is reported separately from the self-contained mathematical proof.
+\end{abstract}
+
+\noindent\textbf{Keywords.} decimal digit sum; carry propagation; periodic decimal blocks; infinite families; OEIS A277223; Lean 4.
+
+\section{Introduction}
+Let $\ds(m)$ denote the sum of the decimal digits of a nonnegative integer $m$.  We call a multiplier $k$ \emph{Good for $n$} when
+\begin{equation}\label{eq:good}
+  \Good(n,k)\quad\Longleftrightarrow\quad \ds(kn)=k.
+\end{equation}
+The sequence A277223 is described in terms of the largest such multiplier.  The OEIS entry records the conjecture that if this largest value is below $12$, then it is either $0$ or $9$ \cite{oeisA277223}.  The purpose of this paper is not only to refute that statement but to determine the complete spectrum below $12$.
+
+The paper has two levels of conclusions.  The structural contribution is the existence of nontrivial infinite terminal families for the values $7$ and $11$; the OEIS small-value problem is then a finite-spectrum application.  Finite-state methods for positional numeration systems are classical \cite{frougny1992,alloucheshallit2003}; our regularity statement below is a specialized carry-transducer observation, while the main arguments use explicit carry obstructions and periodic defect crossings rather than generic automaton search.
+
+\begin{theorem}[Infinite periodic terminal families]\label{thm:families}
+There are explicit sequences $(N^{(7)}_t)_{t\ge0}$ and $(N^{(11)}_t)_{t\ge0}$ such that
+\[
+ a(N^{(7)}_t)=7,
+ \qquad
+ a(N^{(11)}_t)=11
+ \qquad(t\ge0).
+\]
+Within each sequence no two members differ by multiplication by a positive power of $10$.
+\end{theorem}
+
+\begin{theorem}[Exact spectrum below twelve]\label{thm:main}
+For the decimal digit-sum multiplier function $a(n)$,
+\[
+  \{a(n):a(n)<12\}=\{0,7,9,11\}.
+\]
+In particular, $1,2,3,4,5,6,8,10$ never occur as maximal Good multipliers.
+\end{theorem}
+
+The proof is funneled through two reusable modules.  Carry Obstruction shows that every Good multiplier in $\{1,2,3,4,5,6,8,10\}$ is nonmaximal.  Periodic Crossing proves uniqueness of a prescribed Good multiplier from one skipped zero crossing in each nonzero residue class.  The new parameterized constructions choose their block counts so that these crossings occur at controlled decimal scales, making the 152-digit witness the first member of a family and showing independently that the value $11$ also occurs in a nontrivial infinite periodic family.  The compact 52-digit witness is retained as a separate small example.
+
+\section{Preliminaries on decimal digit sums}
+
+\begin{lemma}[Finiteness of Good multipliers]\label{lem:finiteness}
+For every fixed $n\ge1$, only finitely many $k$ satisfy $\Good(n,k)$.  Hence the largest Good multiplier $a(n)$ is well-defined.
+\end{lemma}
+
+\begin{proof}
+Let $k>0$ be Good and let $L$ be the number of decimal digits of $kn$.  Then
+\[
+ k=\ds(kn)\le 9L,
+ \qquad
+ 10^{L-1}\le kn\le 9Ln.
+\]
+For fixed $n$, the last inequality can hold for only finitely many $L$: indeed
+$b_L=10^{L-1}/L$ satisfies $b_{L+1}/b_L=10L/(L+1)\ge5$ for $L\ge1$, so $(b_L)$ is unbounded.  Thus $L$, and consequently $k\le9L$, is bounded.
+\end{proof}
+
+\subsection{Block separation and subadditivity}
+We use two elementary facts repeatedly.
+
+\begin{lemma}[Separated blocks]\label{lem:blocksep}
+If $0\le x<10^w$, then
+\[
+  \ds(x+10^w y)=\ds(x)+\ds(y).
+\]
+\end{lemma}
+
+\begin{proof}
+The summands occupy disjoint decimal columns.  Equivalently, the decimal digit list of the sum is obtained by padding the digit list of $x$ to width $w$ and appending the digit list of $y$.
+\end{proof}
+
+\begin{lemma}[Subadditivity]\label{lem:subadd}
+For all $x,y\ge0$,
+\[
+  \ds(x+y)\le \ds(x)+\ds(y).
+\]
+\end{lemma}
+
+\begin{proof}
+Add $x$ and $y$ column by column.  Each unit of carry replaces ten units in one column by one unit in the next and therefore decreases the total digit sum by $9$.  Hence carries can only decrease the digit sum relative to the carry-free sum.
+\end{proof}
+
+\subsection{The carry-defect identity}
+The preceding proof has a useful exact form.  Let
+\[
+  m=\sum_{i=1}^r d_i10^{e_i},\qquad 1\le d_i\le9,
+\]
+where the exponents $e_i$ are distinct.  Fix an integer $c\ge1$.  Write the decimal profile of $cd$ as
+\[
+  cd=\sum_{u\ge0} P_c(d,u)10^u,
+\]
+where all but finitely many $P_c(d,u)$ are zero.  Before carries are propagated, column $t$ of $cm$ has load
+\begin{equation}\label{eq:load}
+  L_t=\sum_i P_c(d_i,t-e_i).
+\end{equation}
+Let $C_t$ be the incoming carry at column $t$, with $C_0=0$, and let $E_t$ be the final output digit.  Thus
+\begin{equation}\label{eq:carryrec}
+  L_t+C_t=E_t+10C_{t+1},\qquad 0\le E_t\le9.
+\end{equation}
+Only finitely many terms are nonzero if the carry tail is included.
+
+\begin{theorem}[Carry-defect identity]\label{thm:carrydefect}
+With the preceding notation,
+\begin{equation}\label{eq:carrydefect}
+  \sum_{i=1}^r \ds(cd_i)-\ds(cm)
+  =9\sum_{t\ge0} C_{t+1}.
+\end{equation}
+Consequently, $\ds(cm)=\sum_i\ds(cd_i)$ if and only if the superposition is carry-free.
+\end{theorem}
+
+\begin{proof}
+Summing \eqref{eq:carryrec} over all columns gives
+\[
+ \sum_t L_t+\sum_t C_t=\sum_t E_t+10\sum_t C_{t+1}.
+\]
+Since $C_0=0$ and the terminal carry is included in the recurrence, the two carry sums differ only by the factor $9$.  Moreover,
+\[
+ \sum_t L_t=\sum_i\sum_u P_c(d_i,u)=\sum_i\ds(cd_i),
+ \qquad \sum_t E_t=\ds(cm).
+\]
+Substitution yields \eqref{eq:carrydefect}.
+\end{proof}
+
+\begin{corollary}[First-carry locality]\label{cor:locality}
+Suppose every $cd_i$ has at most $w$ decimal digits.  If the superposition is not carry-free, then there is a first overloaded column whose contributing original digits lie within a window of at most $w$ consecutive positions.
+\end{corollary}
+
+\begin{proof}
+At the first carry column $t$ the incoming carry is zero, so \eqref{eq:carryrec} gives $L_t\ge10$.  A digit at exponent $e_i$ can contribute to $L_t$ only when $0\le t-e_i<w$.
+\end{proof}
+
+This locality is the reason the proof below is finite without enumerating integers $n$: only short collision motifs can obstruct a proposed rescaling.
+
+\section{Carry obstruction}
+
+\subsection{Decimal rescaling}
+Assume that $k$ is Good for $n$ and put
+\[
+  m=kn,
+  \qquad \ds(m)=k.
+\]
+
+\begin{definition}[Rescaling witness]
+A triple $(c,j,z)$ is a rescaling witness for $(k,m)$ if
+\begin{equation}\label{eq:rescale}
+  j>k,\qquad ck=j10^z,\qquad \ds(cm)=j.
+\end{equation}
+\end{definition}
+
+\begin{lemma}[Decimal rescaling]\label{lem:rescaling}
+If $(c,j,z)$ is a rescaling witness for $(k,m)$ and $m=kn$, then $j$ is Good for $n$.
+\end{lemma}
+
+\begin{proof}
+The scaling identity gives
+\[
+ cm=ckn=j\,10^z n.
+\]
+Appending $z$ decimal zeros does not change digit sum, hence
+\[
+ \ds(jn)=\ds(j\,10^z n)=\ds(cm)=j.
+\]
+\end{proof}
+
+We call $k$ \emph{carry-obstructed} if every decimal integer $m$ with $\ds(m)=k$ admits such a witness.  A carry-obstructed $k$ can never be the maximal Good multiplier.
+
+\subsection{A profile-safe criterion}
+Let $\lambda=(d_1,\ldots,d_r)$ be the multiset of nonzero digits of $m$.  For fixed $c$, let $w$ be at least the maximum length of the products $cd_i$.  At a single output column the relative profile offsets contributed by distinct input positions are distinct.  Define
+\begin{equation}\label{eq:profilemax}
+ M_c(\lambda)=
+ \max\left\{\sum_{i\in I}P_c(d_i,u_i):
+ I\subseteq\{1,\ldots,r\},\ u_i\in\{0,\ldots,w-1\}
+ \text{ distinct}\right\}.
+\end{equation}
+
+\begin{lemma}[Profile-safe criterion]\label{lem:profilesafe}
+If
+\[
+  M_c(\lambda)\le9
+  \quad\text{and}\quad
+  \sum_i\ds(cd_i)=j,
+\]
+then every placement of the digits with multiset $\lambda$ satisfies
+\[
+  \ds(cm)=j.
+\]
+\end{lemma}
+
+\begin{proof}
+The definition of $M_c$ bounds every raw column load $L_t$ in \eqref{eq:load} by $9$.  Hence no first carry can occur.  The conclusion follows from \cref{thm:carrydefect}.
+\end{proof}
+
+\subsection{The values 1 through 6}
+The first six exclusions are immediate manifestations of the same principle.
+
+\begin{proposition}\label{prop:one-six}
+None of $1,2,3,4,5,6$ is a maximal Good multiplier.
+\end{proposition}
+
+\begin{proof}
+Let $m=kn$ with $\ds(m)=k$.
+
+If $1\le k\le4$, every decimal digit of $m$ is at most $4$.  Doubling is carry-free, so
+\[
+ \ds(2m)=2\ds(m)=2k.
+\]
+Thus $(2,2k,0)$ is a rescaling witness.
+
+For $k=5$, if all digits are at most $4$, the same argument gives the larger Good multiplier $10$.  Otherwise a digit $5$ occurs, and since the total digit mass is $5$ one has $m=5\cdot10^e$.  The witness $(18,9,1)$ gives $18m=90\cdot10^e$.
+
+For $k=6$, the carry-free doubling case again gives $12$.  If a digit $6$ occurs, then $m=6\cdot10^e$ and $(15,9,1)$ is a witness.  The only remaining digit partition is $5+1$, so
+\[
+ m=5\cdot10^e+10^f,\qquad e\ne f.
+\]
+With $(c,j,z)=(25,15,1)$ the two product blocks are $125$ and $25$.  Their digit sums are $8$ and $7$, and for distinct shifts they remain carry-free (the adjacent placements are $375$ and $1275$).  Hence $\ds(25m)=15$.
+\end{proof}
+
+\subsection{The value 8: a depth-two obstruction tree}
+Let $\ds(m)=8$.  If all digits are at most $4$, doubling yields a larger Good multiplier $16$.  Otherwise the nonzero digit partition is one of
+\begin{equation}\label{eq:part8}
+  8,
+  \ 7+1,
+  \ 6+2,
+  \ 6+1+1,
+  \ 5+3,
+  \ 5+2+1,
+  \ 5+1+1+1.
+\end{equation}
+There are $22$ unordered nonzero decimal digit partitions of total mass $8$; exactly seven contain a digit at least $5$, namely the partitions in \eqref{eq:part8}.  Thus the carry-free doubling case together with the following seven rows is exhaustive.  The complete carry-obstruction tree is summarized in \cref{tab:k8}.  A motif such as $53$ means that the displayed digits occur in adjacent decimal positions, in the usual high-to-low order.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{@{}P{2.4cm}P{2.6cm}P{3.0cm}P{5.2cm}@{}}
+\toprule
+Digit partition & Primary witness $(c,j,z)$ & First obstruction & Resolution \\
+\midrule
+$8$ & $(1125,9,3)$ & none & direct \\
+$7+1$ & $(15,12,1)$ & none & profile-safe \\
+$6+2$ & $(15,12,1)$ & none & profile-safe \\
+$6+1+1$ & $(25,20,1)$ & $16$ & $(125,10,2)$ \\
+$5+3$ & $(25,20,1)$ & $53$ & $(2125,17,3)$ \\
+$5+2+1$ & $(25,20,1)$ & $52$ or $12$ & $52$: $(2125,17,3)$ except $152$, then $(125,10,2)$; $12$: $(2250,18,3)$ except $512$, then $(125,10,2)$ \\
+$5+1+1+1$ & $(45,36,1)$ & $115$ & $(375,30,2)$ except $1151$, then $(1750,14,3)$, or $1115$, then $(2750,22,3)$ \\
+\bottomrule
+\end{tabular}
+\caption{Carry-obstruction tree for $k=8$.  Every terminal target $j$ is strictly larger than 8.}
+\label{tab:k8}
+\end{table}
+
+We record the local argument once, since it is representative of all rows.  For the partition $6+1+1$, multiplication by $25$ produces the profiles
+\[
+ 150,\qquad25,\qquad25,
+\]
+whose carry-free digit-sum total is $20$.  The only possible first overload is $5+5$; by \cref{cor:locality} it occurs exactly when one of the $1$ digits sits immediately above the $6$, i.e. the motif $16$.  Then
+\[
+ m=16\cdot10^a+10^b,
+ \qquad b\notin\{a,a+1\}.
+\]
+Multiplication by $125$ gives blocks $2000$ and $125$.  Every allowed relative shift is carry-free, and the digit-sum total is $2+8=10$.
+
+Completeness of the remaining local checks is recorded explicitly in Appendix~\ref{app:local}.  The point is not an unbounded case split: by \cref{cor:locality}, once the relative shift exceeds the combined profile width the blocks are separated, so only the listed overlapping shifts exist.  For example, the primary profiles for $5+2+1$ are $125,50,25$, whose only first-overload motifs are $52$ and $12$.  In the $52$ branch, the secondary profiles $110500$ and $2125$ fail only at the admissible relative placement producing $152$; in the $12$ branch, $27000$ and $11250$ fail only at the placement producing $512$.  For $5+1+1+1$, after the unique primary motif $115$, the secondary profiles $43125$ and $375$ have exactly two admissible exceptional shifts, producing $1151$ and $1115$.  The terminal arithmetic is
+\[
+\begin{array}{rclcrcl}
+125\cdot152&=&19000,&&125\cdot512&=&64000,\\
+1750\cdot1151&=&2014250,&&2750\cdot1115&=&3066250,
+\end{array}
+\]
+with digit sums $10,10,14,22$, respectively.  Hence every branch ends in a larger Good multiplier.
+
+\begin{proposition}\label{prop:not8}
+The value $8$ is carry-obstructed and therefore is never maximal.
+\end{proposition}
+
+\subsection{The value 10}
+If $10$ is Good for $n$, then
+\[
+  \ds(10n)=\ds(n)=10.
+\]
+Thus the input itself has digit mass $10$.  If all digits are at most $4$, doubling gives target $20$.  If at least two digits are at least $5$, the only possibility is $5+5$, and multiplication by $12$ gives two $60$ blocks, hence target $12$.
+
+Assume therefore that exactly one digit is at least $5$.  There are exactly $17$ such digit partitions of total mass $10$.  Fifteen are position-independent under the profile-safe criterion and fall into the five witness families in \cref{tab:k10safe}; the remaining two are $5+4+1$ and $5+3+2$, treated immediately afterward.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{@{}c P{9.2cm} P{2.0cm}@{}}
+\toprule
+$c=j$ & Profile-safe digit partitions of total mass 10 & $M_c$ \\
+\midrule
+12 & $9+1$ & $9$ \\
+13 & $8+2$; $8+1+1$ & $7;5$ \\
+15 & $7+3$; $7+2+1$; $6+4$; $6+2+2$ & $9;9;9;9$ \\
+21 & $7+1+1+1$; $6+1+1+1+1$; $5+2+2+1$; $5+2+1+1+1$; $5+1+1+1+1+1$ & $9;8;9;9;7$ \\
+22 & $6+3+1$; $6+2+1+1$; $5+3+1+1$ & $9;7;9$ \\
+\bottomrule
+\end{tabular}
+\caption{Profile-safe families for $k=10$.  The final column gives the exact maximum raw column load $M_c(\lambda)$.  Since $c\cdot10=c\cdot10^1$, each $c$ is itself the larger Good target.}
+\label{tab:k10safe}
+\end{table}
+
+For every row the sum of individual product digit sums equals $c$ and the profile maximum \eqref{eq:profilemax} is at most $9$.  For instance,
+\[
+22\cdot6=132,\quad22\cdot3=66,\quad22\cdot1=22,
+\]
+with digit-sum total $6+12+4=22$ and profile maximum $9$.
+
+Only two partitions are not covered by the table.  For $5+4+1$, the primary witness $c=21$ has profiles $105,84,21$ and first-carry motifs $54$ and $145$.  The motif $54$ is resolved by $c=24$ because
+\[
+24\cdot54=1296,\qquad24\cdot1=24,
+\]
+whereas $145$ is resolved by
+\[
+12\cdot145=1740,
+\qquad \ds(1740)=12.
+\]
+For $5+3+2$, the primary profiles $105,63,42$ have the unique first motif $53$.  Multiplication by $24$ then produces $1272$ and $48$; the sole secondary collision is $253$, for which
+\[
+12\cdot253=3036,
+\qquad \ds(3036)=12.
+\]
+Thus the obstruction tree again has depth at most two.
+
+\begin{proposition}\label{prop:not10}
+The value $10$ is carry-obstructed and therefore is never maximal.
+\end{proposition}
+
+Combining \cref{prop:one-six,prop:not8,prop:not10} gives the first general module.
+
+\begin{theorem}[Carry Obstruction theorem]\label{thm:carryobs}
+If
+\[
+ k\in\{1,2,3,4,5,6,8,10\}
+\]
+and $k$ is Good for $n$, then there exists a Good multiplier $j>k$.  Consequently none of these eight values can equal $a(n)$.
+\end{theorem}
+
+\subsection{Finite-state scope and scalability}
+The local carry argument is not confined to $k<12$.  For a fixed multiplier $c$, right-to-left schoolbook multiplication of an arbitrary decimal input requires only the current carry and the accumulated output digit sum.  If one is testing whether the final digit sum equals a fixed target $j$, the accumulated sum may be capped at $j+1$.  Thus one lane has at most
+\[
+ c(j+2)
+\]
+states: the carry is $<c$ and the capped score lies in $\{0,\ldots,j+1\}$.  A finite collection of Good/Not-Good conditions is therefore recognized by a finite product automaton.
+
+\begin{proposition}[Regularity of fixed multiplier constraints]\label{prop:regular}
+For every fixed $c,j$, the set of finite decimal digit strings representing integers $n$ with $\ds(cn)=j$ is a regular language.  More generally, every finite Boolean combination of conditions $\ds(c_i n)=j_i$ is decidable by a finite-state transducer.
+\end{proposition}
+
+\begin{proof}
+Scan the digits of $n$ from least to most significant.  For one condition keep the state $(\gamma,s)$, where $0\le\gamma<c$ is the multiplication carry and $s\in\{0,\ldots,j+1\}$ is the output digit sum capped at $j+1$.  On input digit $d$, write $cd+\gamma=e+10\gamma'$ with $0\le e\le9$ and update to $(\gamma',\min(j+1,s+e))$.  After the last input digit, add the decimal digit sum of the remaining carry and accept exactly when the total is $j$.  This gives a finite deterministic automaton.  Products and complements handle finite Boolean combinations.
+\end{proof}
+
+\begin{remark}
+The proposition proves decidability, not polynomial scalability in the number of simultaneous multipliers: a naive product construction grows multiplicatively.  The obstruction trees used for $8$ and $10$ exploit digit mass and first-carry locality to avoid that generic state explosion.  Thus the finite-state model is a completeness backstop, whereas the paper's main proofs remain structural.
+\end{remark}
+
+\section{Periodic crossing}
+
+\subsection{Defect monotonicity}
+For fixed $N$, define the integer-valued defect
+\begin{equation}\label{eq:defect}
+  \Def_N(k)=\ds(kN)-k.
+\end{equation}
+Thus $k$ is Good exactly when $\Def_N(k)=0$.
+
+\begin{theorem}[Residue-class monotonicity]\label{thm:antitone}
+If $p$ is Good for $N$, then
+\[
+  \Def_N(k+p)\le\Def_N(k)
+\]
+for every $k\ge0$.  Consequently, for each residue $r$, the sequence
+\[
+  q\longmapsto \Def_N(pq+r)
+\]
+is nonincreasing.
+\end{theorem}
+
+\begin{proof}
+By \cref{lem:subadd} and $\ds(pN)=p$,
+\[
+\begin{aligned}
+\Def_N(k+p)
+ &=\ds(kN+pN)-k-p\\
+ &\le\ds(kN)+\ds(pN)-k-p\\
+ &=\Def_N(k).
+\end{aligned}
+\]
+Iteration gives the residue-class statement.
+\end{proof}
+
+\begin{theorem}[Crossing criterion]\label{thm:crosscriterion}
+Let $p>0$ be Good for $N$.  Suppose
+\[
+ \Def_N(2p)<0,
+\]
+and for every $1\le r<p$ there is an integer $q_r\ge0$ such that
+\[
+ \Def_N(pq_r+r)>0,
+ \qquad
+ \Def_N(p(q_r+1)+r)<0.
+\]
+Then $p$ is the unique positive Good multiplier for $N$.
+\end{theorem}
+
+\begin{proof}
+In the zero residue class, monotonicity and $\Def_N(2p)<0$ exclude every $pq$ with $q\ge2$; $p$ itself is Good.  In a nonzero residue class, all indices up to $q_r$ have defect at least the positive left endpoint, while all indices from $q_r+1$ onward have defect at most the negative right endpoint.  Hence no defect can vanish.
+\end{proof}
+
+\subsection{Periodic blocks}
+For a width $d$, a low block $W$, a block count $M$, and a high block $H$, define recursively
+\[
+ \mathcal B_{W,d}^{(0)}(H)=H,
+ \qquad
+ \mathcal B_{W,d}^{(M+1)}(H)
+   =W+10^d\mathcal B_{W,d}^{(M)}(H).
+\]
+Let
+\[
+ \operatorname{Rep}_{W,d}(M)=\mathcal B_{W,d}^{(M)}(0).
+\]
+If $W<10^d$, repeated application of \cref{lem:blocksep} gives
+\begin{equation}\label{eq:blocksum}
+ \ds\!\left(\mathcal B_{W,d}^{(M)}(H)\right)
+ =M\ds(W)+\ds(H).
+\end{equation}
+
+We shall repeatedly use a local update of one aligned block.  If $0\le i<M$ and
+\[
+ W<10^d,\qquad W+x<10^d,
+\]
+then
+\begin{equation}\label{eq:alignedupdate}
+ \ds\!\left(\operatorname{Rep}_{W,d}(M)+x10^{di}\right)
+ =(M-1)\ds(W)+\ds(W+x).
+\end{equation}
+Indeed, split the repeated word immediately below and immediately above the $i$-th block.  The three pieces are separated powers of $10^d$; the middle block is changed from $W$ to $W+x$, and the hypothesis $W+x<10^d$ rules out an inter-block carry.  More generally, if a tail $T<10^s$ is placed below the repeated word, then
+\begin{equation}\label{eq:alignedupdatetail}
+ \ds\!\left(T+10^s\bigl(\operatorname{Rep}_{W,d}(M)+x10^{di}\bigr)\right)
+ =\ds(T)+(M-1)\ds(W)+\ds(W+x).
+\end{equation}
+Thus an arbitrarily long periodic word can be modified at one aligned position using only the digit sums of $W$, $W+x$, and the fixed tail.  This is the common local mechanism behind both infinite families below.
+
+The following algebraic lemma is the source of the long periodic decimals.
+
+\begin{theorem}[Periodic-block normal form]\label{thm:periodicnormal}
+Assume
+\begin{equation}\label{eq:pq}
+ pQ+1=10^d,
+ \qquad
+ pC=A10^t+B,
+\end{equation}
+and set
+\[
+ N=C+10^t\operatorname{Rep}_{AQ,d}(M).
+\]
+Then
+\begin{equation}\label{eq:pN}
+ pN=A10^{dM+t}+B.
+\end{equation}
+For a residue $r$, write
+\begin{equation}\label{eq:resdata}
+ rA=ph_r+a_r,
+ \qquad
+ rC=h_r10^t+T_r.
+\end{equation}
+Then for every $q\ge0$,
+\begin{equation}\label{eq:normal}
+\begin{aligned}
+ (pq+r)N={}&(Aq+h_r)10^{dM+t}
+ +10^t\operatorname{Rep}_{a_rQ,d}(M)
+ +(Bq+T_r).
+\end{aligned}
+\end{equation}
+If $M=S+1$, this can be regrouped as
+\begin{equation}\label{eq:blocknormal}
+ (pq+r)N=L_{q,r}+10^{d+t}
+ \mathcal B_{W_r,d}^{(S)}(H_{q,r}),
+\end{equation}
+where
+\[
+ W_r=a_r Q,
+ \qquad H_{q,r}=Aq+h_r,
+ \qquad L_{q,r}=W_r10^t+Bq+T_r.
+\]
+Whenever $W_r<10^d$ and $L_{q,r}<10^{d+t}$,
+\begin{equation}\label{eq:periodicds}
+ \ds((pq+r)N)
+ =\ds(L_{q,r})+S\ds(W_r)+\ds(H_{q,r}).
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+The identity $pQ+1=10^d$ yields, by induction on $M$,
+\begin{equation}\label{eq:tel1}
+ p\operatorname{Rep}_{AQ,d}(M)+A=A10^{dM}.
+\end{equation}
+Substitution into the definition of $N$ gives \eqref{eq:pN}.  A second induction using $rA=ph_r+a_r$ gives
+\begin{equation}\label{eq:tel2}
+ r\operatorname{Rep}_{AQ,d}(M)+h_r
+ =h_r10^{dM}+\operatorname{Rep}_{a_rQ,d}(M).
+\end{equation}
+Expanding $(pq+r)N=q(pN)+rN$ and using \eqref{eq:resdata} and \eqref{eq:tel2} yields \eqref{eq:normal}.  Splitting the lowest copy of $W_r$ gives \eqref{eq:blocknormal}; \eqref{eq:periodicds} follows from separated blocks and \eqref{eq:blocksum}.
+\end{proof}
+
+\section{Two nontrivial infinite periodic-crossing families}
+The periodic construction is not limited to isolated witnesses for the values $7$ and $11$.  We now choose the block counts so that the residue-class crossing occurs at a prescribed decimal scale.  This removes the structural dependence on isolated long constants and gives nontrivial infinite families; none of the family members is obtained from another merely by appending decimal zeros.  The compact exponents $152$ and $52$ are retained only as small explicit witnesses, with the former becoming the first member of the $7$-family.
+
+\subsection{An infinite family with maximal multiplier 7}
+For $t\ge0$, put
+\begin{equation}\label{eq:u7family}
+ u_t=6t+2,
+ \qquad
+ M^{(7)}_t=\frac{7\cdot10^{u_t}-25}{27}.
+\end{equation}
+The quotient is integral: $10^6\equiv1\pmod{27}$ and the case $t=0$ is $7\cdot10^2-25=675$.  Equivalently,
+\begin{equation}\label{eq:M7rec}
+ M^{(7)}_0=25,
+ \qquad
+ M^{(7)}_{t+1}=10^6M^{(7)}_t+925925.
+\end{equation}
+The defining balance relation is
+\begin{equation}\label{eq:balance7}
+ 7\cdot10^{u_t}=27M^{(7)}_t+25.
+\end{equation}
+Define
+\begin{equation}\label{eq:N7family}
+ N^{(7)}_t
+ =73+10^2\operatorname{Rep}_{714285,6}(M^{(7)}_t)
+ =\frac{5\cdot10^{6M^{(7)}_t+2}+11}{7}.
+\end{equation}
+Thus
+\[
+ 7N^{(7)}_t=5\cdot10^{6M^{(7)}_t+2}+11,
+\]
+so $7$ is Good for every family member.
+
+For $1\le r\le6$, write
+\[
+ 5r=7h_r+a_r,
+ \qquad
+ 73r=100h_r+T_r,
+ \qquad
+ W_r=142857a_r.
+\]
+The residue data are
+\begin{center}
+\small
+\begin{tabular}{@{}c|rrrrr@{}}
+\toprule
+$r$ & $h_r$ & $a_r$ & $T_r$ & $W_r$ & $\ds(W_r)$\\
+\midrule
+1&0&5&73&714285&27\\
+2&1&3&46&428571&27\\
+3&2&1&19&142857&27\\
+4&2&6&92&857142&27\\
+5&3&4&65&571428&27\\
+6&4&2&38&285714&27\\
+\bottomrule
+\end{tabular}
+\end{center}
+Let $R_{r,t}$ denote the lower periodic part of $rN^{(7)}_t$, so that
+\[
+ rN^{(7)}_t=h_r10^{6M^{(7)}_t+2}+R_{r,t}.
+\]
+Every six-digit block of $R_{r,t}$ is one of the six cyclic permutations displayed above and therefore uses only the digits $1,2,4,5,7,8$.  Also
+\[
+ \ds(T_r-11)=\ds(T_r)-2.
+\]
+Since $M^{(7)}_t>t$, the correction
+\[
+ 11\cdot10^{u_t}=10^2\bigl(11\cdot10^{6t}\bigr)
+\]
+is aligned with the $t$-th width-six block of the repeated word.  That block lies strictly inside the periodic region.  Adding the correction therefore replaces one block $W_r$ by $W_r+11$; the residue table gives $W_r+11<10^6$ and $\ds(W_r+11)=29$, so the update creates no inter-block carry.  Consequently
+\begin{align}
+ \ds(R_{r,t}+11\cdot10^{u_t})
+   &=27M^{(7)}_t+\ds(T_r)+2,\label{eq:7lowright}\\
+ \ds(R_{r,t}+11(10^{u_t}-1))
+   &=27M^{(7)}_t+\ds(T_r).\label{eq:7lowleft}
+\end{align}
+The second identity follows by first replacing $T_r$ by $T_r-11$ and then adding the separated block $11\cdot10^{u_t}$.
+
+The finite residue table also satisfies
+\begin{equation}\label{eq:7resbalance}
+ h_r+\ds(T_r)-r=9
+ \qquad(1\le r\le6).
+\end{equation}
+Putting $q_t=10^{u_t}$ into the exact residue normal form gives
+\[
+ \ds((7q+r)N^{(7)}_t)
+ =\ds(5q+h_r)+\ds(R_{r,t}+11q).
+\]
+Now
+\[
+ \ds(5q_t+h_r)=5+h_r,
+ \qquad
+ \ds(5(q_t-1)+h_r)=9u_t+h_r.
+\]
+Using \eqref{eq:balance7}, \eqref{eq:7lowright}--\eqref{eq:7resbalance}, one obtains the uniform endpoint identities
+\begin{equation}\label{eq:7familycross}
+ \Def_{N^{(7)}_t}(7(q_t-1)+r)=9u_t-9=54t+9>0,
+ \qquad
+ \Def_{N^{(7)}_t}(7q_t+r)=-9<0
+\end{equation}
+for every $1\le r\le6$.  The zero residue class satisfies
+\[
+ \Def_{N^{(7)}_t}(14)=-9.
+\]
+The crossing criterion therefore gives the first infinite-family theorem.  To distinguish the structural families below from the trivial decimal scaling of Corollary~\ref{cor:scaled}, we use ``nontrivial with respect to decimal scaling'' to mean that for distinct family members $N_s,N_t$ there is no positive integer $j$ with $N_s=10^jN_t$ or $N_t=10^jN_s$.
+
+\begin{theorem}[Infinite terminal family for $7$]\label{thm:infinite7}
+For every $t\ge0$,
+\[
+ a(N^{(7)}_t)=7.
+\]
+In particular, there are infinitely many integers $n$ with $a(n)=7$, no two of which differ by multiplication by a positive power of $10$.
+\end{theorem}
+
+\begin{proof}
+Equation \eqref{eq:7familycross} gives a strict adjacent crossing in every nonzero residue class modulo $7$, while $\Def(14)<0$ eliminates all later points in the zero residue class.  Apply \cref{thm:crosscriterion}.  The recurrence \eqref{eq:M7rec} makes the block counts strictly increasing, and every $N^{(7)}_t$ ends in $73$; hence distinct family members cannot differ by multiplication by a positive power of $10$.
+\end{proof}
+
+The original $152$-digit counterexample is simply the first member: $M^{(7)}_0=25$ and
+\[
+ N^{(7)}_0=\frac{5\cdot10^{152}+11}{7}.
+\]
+
+\subsection{An infinite family with maximal multiplier 11}
+For $t\ge0$, set
+\begin{equation}\label{eq:q11family}
+ q_t=100^{t+2}
+\end{equation}
+and
+\begin{equation}\label{eq:M11family}
+ M^{(11)}_t=\frac{11q_t-29}{9}.
+\end{equation}
+This is an integer because $q_t\equiv1\pmod 9$.  Equivalently,
+\begin{equation}\label{eq:M11rec}
+ M^{(11)}_0=12219,
+ \qquad
+ M^{(11)}_{t+1}=100M^{(11)}_t+319.
+\end{equation}
+In particular $M^{(11)}_t\ge t+2$.  The balance relation is simply
+\begin{equation}\label{eq:balance11}
+ 9M^{(11)}_t=11q_t-29.
+\end{equation}
+Define
+\begin{equation}\label{eq:N11family}
+ N^{(11)}_t
+ =82+10^2\operatorname{Rep}_{81,2}(M^{(11)}_t)
+ =\frac{9\cdot10^{2M^{(11)}_t+2}+2}{11}.
+\end{equation}
+The periodic-block identity gives
+\begin{equation}\label{eq:11sparse}
+ 11N^{(11)}_t=9\cdot10^{2M^{(11)}_t+2}+2,
+\end{equation}
+so $11$ is Good for every $t$.
+
+For $1\le r\le10$, use the same residue decomposition
+\begin{equation}\label{eq:11resdata}
+ 9r=11h_r+a_r,
+ \qquad
+ 82r=100h_r+T_r,
+ \qquad
+ W_r=9a_r.
+\end{equation}
+The complete residue data, together with the only local digit-sum changes needed at the crossing, are
+\begin{center}
+\small
+\begin{tabular}{@{}c|rrrrrrr@{}}
+\toprule
+$r$&$h_r$&$T_r$&$W_r$&$\ds(T_r)$&$\ds(T_r-2)$&$\ds(W_r+2)-9$&class\\
+\midrule
+1&0&82&81&10&8& 2&A\\
+2&1&64&63&10&8& 2&A\\
+3&2&46&45&10&8& 2&A\\
+4&3&28&27&10&8& 2&A\\
+5&4&10&09& 1&8&$-7$&B\\
+6&4&92&90&11&9& 2&A\\
+7&5&74&72&11&9& 2&A\\
+8&6&56&54&11&9& 2&A\\
+9&7&38&36&11&9& 2&A\\
+10&8&20&18&2&9&$-7$&B\\
+\bottomrule
+\end{tabular}
+\end{center}
+Thus class B consists exactly of residues $5$ and $10$.  This two-class split is forced by the modulus-$11$/base-$100$ transfer and is not created by tuning $q_t$.  Indeed, $a_r\equiv9r\pmod{11}$ and $1\le a_r\le10$, so as $r$ runs through $1,\ldots,10$, the values $a_r$ run through all nonzero residues modulo $11$.  Consequently $W_r=9a_r$ runs through the ten blocks $09,18,\ldots,90$ in a permuted order.  The aligned update $W_r\mapsto W_r+2$ changes the digit sum by $+2$ for eight of these blocks, but necessarily crosses a decimal carry threshold at exactly $09$ and $18$, where the change is $-7$.  These are precisely $r=5$ and $r=10$.  Thus the A/B dichotomy is intrinsic to this local $p=11$ transfer; the choice $q_t=100^{t+2}$ only aligns the same $+2$ update with a repeated block.  By contrast, the width-six $p=7$ transfer above has a uniform local digit-sum increment in all six nonzero residue classes.
+
+Let
+\[
+ R_{r,t}=T_r+100\operatorname{Rep}_{W_r,2}(M^{(11)}_t),
+\]
+so that the residue normal form is
+\begin{equation}\label{eq:11split}
+ (11q+r)N^{(11)}_t
+ =(9q+h_r)10^{2M^{(11)}_t+2}+(R_{r,t}+2q).
+\end{equation}
+At the chosen crossing $q=q_t=100^{t+2}$, the added term $2q_t$ is exactly one base-$100$ block of value $2$ placed at block position $t+2$.  Since $M^{(11)}_t\ge t+2$ and every $W_r+2<100$, this changes precisely one repeated block $W_r$ into $W_r+2$ and produces no carry.  Hence
+\begin{equation}\label{eq:11lowright}
+ \ds(R_{r,t}+2q_t)
+ =9M^{(11)}_t+\ds(T_r)+\ds(W_r+2)-9.
+\end{equation}
+Likewise
+\[
+ 2(q_t-1)=2q_t-2.
+\]
+Every $T_r\ge10$, so the subtraction of $2$ is confined to the low tail, again without borrow into the periodic word.  Therefore
+\begin{equation}\label{eq:11lowleft}
+ \ds(R_{r,t}+2(q_t-1))
+ =9M^{(11)}_t+\ds(T_r-2)+\ds(W_r+2)-9.
+\end{equation}
+No unbounded carry analysis is hidden here: both identities are direct consequences of separated two-digit blocks.
+
+The high blocks are equally simple.  Since $q_t=10^{2t+4}$ and $0\le h_r\le8$,
+\begin{equation}\label{eq:11high}
+ \ds(9q_t+h_r)=9+h_r,
+ \qquad
+ \ds(9(q_t-1)+h_r)=18(t+2)+h_r.
+\end{equation}
+For class A the residue table gives
+\[
+ h_r+\ds(T_r)+\bigl(\ds(W_r+2)-9\bigr)-r=11,
+\]
+\[
+ h_r+\ds(T_r-2)+\bigl(\ds(W_r+2)-9\bigr)-r=9,
+\]
+whereas for class B the corresponding constants are $-7$ and $0$.  Combining these identities with \eqref{eq:balance11} yields, for every $t\ge0$,
+\begin{equation}\label{eq:11familycrossA}
+ \Def_{N^{(11)}_t}(11(q_t-1)+r)=18t+27>0,
+ \qquad
+ \Def_{N^{(11)}_t}(11q_t+r)=-9<0
+ \quad(r\notin\{5,10\}),
+\end{equation}
+and
+\begin{equation}\label{eq:11familycrossB}
+ \Def_{N^{(11)}_t}(11(q_t-1)+r)=18t+18>0,
+ \qquad
+ \Def_{N^{(11)}_t}(11q_t+r)=-27<0
+ \quad(r\in\{5,10\}).
+\end{equation}
+Thus all ten nonzero residue classes cross strictly between the \emph{same adjacent quotients} $q_t-1$ and $q_t$.
+
+The zero residue is immediate from \eqref{eq:11sparse}:
+\[
+ 22N^{(11)}_t=18\cdot10^{2M^{(11)}_t+2}+4,
+ \qquad
+ \Def_{N^{(11)}_t}(22)=13-22=-9.
+\]
+We have therefore proved the second family theorem.
+
+\begin{theorem}[Infinite terminal family for $11$]\label{thm:infinite11}
+For every $t\ge0$,
+\[
+ a(N^{(11)}_t)=11.
+\]
+Consequently there are infinitely many integers $n$ with $a(n)=11$, no two of which differ by multiplication by a positive power of $10$.
+\end{theorem}
+
+\begin{proof}
+Equations \eqref{eq:11familycrossA} and \eqref{eq:11familycrossB} give the required strict adjacent crossing in every nonzero residue class modulo $11$, and $\Def(22)=-9$ handles the zero residue class.  Apply \cref{thm:crosscriterion}.  The recurrence \eqref{eq:M11rec} makes the block counts strictly increasing, and every $N^{(11)}_t$ ends in $82$; hence no two members differ by multiplication by a positive power of $10$.
+\end{proof}
+
+The compact $52$-digit witness used in the small-spectrum theorem is
+\[
+ N_{11}^{\mathrm{small}}=\frac{9\cdot10^{52}+2}{11}
+ =\underbrace{81\,81\,\cdots\,81}_{25\text{ blocks}}82.
+\]
+For completeness we also prove its maximality inside the manuscript.
+
+\begin{proposition}[Compact $52$-digit witness]\label{prop:compact11}
+For $N_{11}^{\mathrm{small}}$ above,
+\[
+ a(N_{11}^{\mathrm{small}})=11.
+\]
+\end{proposition}
+
+\begin{proof}
+The sparse identity
+\[
+ 11N_{11}^{\mathrm{small}}=9\cdot10^{52}+2
+\]
+shows that $11$ is Good, while
+\[
+ \Def_{N_{11}^{\mathrm{small}}}(22)=-9.
+\]
+For $1\le r\le10$, let $q_r=22$ for $r=1,2$ and $q_r=21$ otherwise.  Applying the periodic normal form with $M=25$ leaves $24$ complete two-digit residue blocks, each of digit sum $9$, and gives the following endpoint defects:
+\[
+\begin{array}{c|cccccccccc}
+r&1&2&3&4&5&6&7&8&9&10\\ \hline
+q_r&22&22&21&21&21&21&21&21&21&21\\
+\Def(11q_r+r)&9&9&18&9&9&9&9&18&9&9\\
+\Def(11(q_r+1)+r)&-9&-18&-9&-9&-9&-9&-9&-18&-9&-9
+\end{array}
+\]
+Every entry is obtained from at most the four low decimal digits together with the fixed contribution $24\cdot9=216$ of the untouched periodic blocks; thus the table is a direct finite arithmetic consequence of \cref{thm:periodicnormal}, not an integer-range search.  Each nonzero residue class has a strict adjacent sign crossing, and the zero residue class is negative from $22$ onward.  The crossing criterion \cref{thm:crosscriterion} therefore yields the claim.
+\end{proof}
+
+The witness is retained because it gives a short explicit representative of the value $11$; the infinite family above is chosen instead for its uniform pure-power crossing formula.
+
+\begin{remark}[Defects are multiples of nine]
+For either family, $p\in\{7,11\}$ is coprime to $9$ and $\ds(pN)=p$, hence $N\equiv1\pmod9$.  Therefore
+\[
+ \Def_N(k)=\ds(kN)-k\equiv kN-k\equiv0\pmod9.
+\]
+The multiples of nine in the crossing formulas are thus forced by the decimal congruence, not numerical coincidence.
+\end{remark}
+
+
+\section{Realizing 0 and 9}
+For completeness we prove the two classical surviving values internally.
+
+\begin{proposition}\label{prop:max9}
+$a(1)=9$.
+\end{proposition}
+
+\begin{proof}
+The equation is $\ds(k)=k$.  Every one-digit $k\le9$ satisfies it.  If $k=10q+r\ge10$, then $q>0$ and
+\[
+ \ds(k)=\ds(q)+r\le q+r<10q+r=k.
+\]
+Thus $9$ is maximal.
+\end{proof}
+
+\begin{proposition}\label{prop:max0}
+$a(62)=0$.
+\end{proposition}
+
+\begin{proof}
+Suppose $k>0$ and $\ds(62k)=k$.  Modulo $9$,
+\[
+ 62k\equiv\ds(62k)=k,
+\]
+so $61k\equiv0\pmod9$.  As $\gcd(61,9)=1$, one has $9\mid k$.
+
+Let $L$ be the number of decimal digits of $62k$.  Since a length-$L$ decimal number has digit sum at most $9L$,
+\[
+ k\le9L.
+\]
+If $L\ge5$, then
+\[
+ 62k\le558L<10^{L-1},
+\]
+where the last inequality follows from the base case $558\cdot5<10^4$ and the induction
+\[
+ 558(L+1)<10\cdot558L.
+\]
+This contradicts the fact that an $L$-digit positive integer is at least $10^{L-1}$.  Therefore $L\le4$ and $k\le36$.  Together with $9\mid k$, only
+\[
+ k\in\{9,18,27,36\}
+\]
+remain.  Directly,
+\[
+\begin{array}{c|cccc}
+ k&9&18&27&36\\ \hline
+ 62k&558&1116&1674&2232\\
+ \ds(62k)&18&9&18&9
+\end{array}
+\]
+so none is Good.
+\end{proof}
+
+\section{Proof of the classification}
+\begin{proof}[Proof of \cref{thm:main}]
+Let $a(n)<12$.  The only numerical possibilities are $0,1,\ldots,11$.  The Carry Obstruction theorem \cref{thm:carryobs} removes
+\[
+1,2,3,4,5,6,8,10,
+\]
+leaving only $0,7,9,11$.  Conversely, \cref{prop:max0,thm:infinite7,prop:max9,thm:infinite11} realize all four values; for $7$ and $11$ one may take the first member of the corresponding infinite family.
+\end{proof}
+
+\begin{corollary}[Infinite scaled families]\label{cor:scaled}
+For every $t\ge0$,
+\[
+ a(62\cdot10^t)=0,\qquad
+ a(N^{(7)}_0\cdot10^t)=7,\qquad
+ a(10^t)=9,\qquad
+ a(N^{(11)}_1\cdot10^t)=11.
+\]
+In particular, each of the four values in \cref{thm:main} is attained infinitely often.
+\end{corollary}
+
+\begin{proof}
+For every $x$ and $t$, appending $t$ trailing zeros gives
+\[
+ \ds(10^t x)=\ds(x).
+\]
+Hence $\Good(10^t n,k)$ is equivalent to $\Good(n,k)$ for every $k$, and the entire set of Good multipliers is unchanged by the scaling $n\mapsto10^t n$.  Apply this to the four witnesses above.  Since all witnesses are positive, their decimal scalings are pairwise distinct as $t$ varies.
+\end{proof}
+
+\section{Supplementary Lean 4 formalization}
+A companion Lean 4 development mirrors the definitions and principal structural lemmas used in the manuscript, including decimal block concatenation, digit-sum subadditivity, the Carry Obstruction mechanism, defect monotonicity and Periodic Crossing, and the two parameterized terminal families.  The formalization is supplementary: no mathematical result in this article depends on machine verification, and the paper-to-source theorem map is confined to the appendix.  The repository pins Lean 4 and Mathlib to version 4.32.2 and contains a CI gate that regenerates the finite certificates, reruns the independent arithmetic audits, builds the project, and invokes independent Lean checkers.  A claim of kernel certification is attached only to a matching repository commit for which that complete CI gate is green; the present manuscript makes no independent kernel-certification claim.
+
+\section{Discussion}
+Two points appear to be more general than this particular OEIS problem.
+
+First, the Carry Obstruction method separates the \emph{mass} constraint $\ds(m)=k$ from the \emph{geometry} of carries.  For a fixed small mass, only finitely many nonzero digit partitions exist, while the first-carry theorem turns arbitrary digit spacing into bounded local motifs.  This gives a systematic route for proving that a putative small solution cannot be maximal.
+
+Second, Periodic Crossing replaces a global search for larger multipliers by a one-dimensional monotonicity argument in each residue class.  Once a construction makes $p$ Good, the inequality
+\[
+ \Def_N(k+p)\le\Def_N(k)
+\]
+means that uniqueness is reduced to locating a single skipped zero crossing in each residue.  Repetends arising from identities $pQ+1=10^d$ are particularly well suited to this purpose because multiplication has an exact block normal form.
+
+The two infinite families show that the terminal values $7$ and $11$ are not isolated exceptions.  A natural continuation is now to characterize which target values admit an infinite periodic-crossing family and how the answer depends on the numeral base.  The exact spectrum below $12$ is therefore best viewed as the first finite application of the two structural mechanisms, rather than the endpoint of the method.
+
+\section*{Data and code availability}
+The companion repository contains the Lean sources, certificate generator, independent arithmetic audits, CI configuration, and manuscript source.  The Lean layer is supplementary; its machine-verification status is determined by the CI result for the exact source commit, while the mathematical proofs in this article are self-contained.
+
+\begin{thebibliography}{9}
+\bibitem{oeisA277223}
+The On-Line Encyclopedia of Integer Sequences, \emph{A277223}, ``$a(n)=\mathrm{A052489}(n)/n$,'' accessed August 2026.
+\url{https://oeis.org/A277223}
+
+\bibitem{oeisA052489}
+The On-Line Encyclopedia of Integer Sequences, \emph{A052489}, accessed August 2026.
+\url{https://oeis.org/A052489}
+
+\bibitem{frougny1992}
+C.~Frougny,
+``Representations of numbers and finite automata,''
+\emph{Mathematical Systems Theory} \textbf{25}(1), 37--60, 1992.
+\url{https://doi.org/10.1007/BF01368783}
+
+\bibitem{alloucheshallit2003}
+J.-P.~Allouche and J.~Shallit,
+\emph{Automatic Sequences: Theory, Applications, Generalizations},
+Cambridge University Press, 2003.
+\url{https://doi.org/10.1017/CBO9780511546563}
+
+\bibitem{mathlib}
+The mathlib Community,
+``The Lean mathematical library,''
+\emph{CPP 2020}, pp.~367--381, 2020.
+
+\bibitem{lean4}
+L.~de Moura and S.~Ullrich,
+``The Lean 4 theorem prover and programming language,''
+in \emph{CADE 28}, Lecture Notes in Computer Science 12699, pp.~625--635, 2021.
+\bibitem{lean4322}
+Lean FRO,
+\emph{Lean 4.32.2 release notes}, July 28, 2026.
+\url{https://lean-lang.org/doc/reference/latest/releases/v4.32.2/}
+
+\end{thebibliography}
+
+\appendix
+\section{Discovery computation versus proof dependency}\label{app:discovery}
+The first isolated witnesses were found computationally before the parameterized structure was understood.  For reproducibility, the companion repository retains diagnostic scripts that reconstruct candidate periodic blocks, regenerate the bounded carry certificates, and independently audit the endpoint arithmetic.  These scripts are \emph{discovery and regression tools only}: no theorem in the paper assumes that a search has exhausted an interval of integers.  The final proof dependencies are exactly the carry-localization theorem, the finite local obstruction tables, the periodic-block identities, residue-class defect monotonicity, and the parameterized crossing formulas proved in the text.
+
+The file \texttt{scripts/discovery\_search.py} makes one restricted discovery route explicit.  It scans only the sparse template
+\[
+ N=\frac{A10^L+B}{p},\qquad 1\le A\le9,\quad 1\le B<100,\quad \ds(A)+\ds(B)=p,
+\]
+with increasing $L$, and applies a finite \emph{heuristic} Good-multiplier scan to each integral candidate.  In that prescribed template and search order it returns $(p,L,A,B)=(11,52,9,2)$ and then $(7,152,5,11)$.  This explains a reproducible route to the compact constants; it is not a proof of global minimality, and the scan bound is not used anywhere in the mathematical argument.
+
+The distinction is important for the two long constants.  The exponent $152$ is now the first block length forced by the explicit $7$-family recurrence.  The exponent $52$ remains a compact separately proved witness for $11$; it is no longer asked to carry the structural burden, because \cref{thm:infinite11} supplies an independent pure-power infinite family.  The file \texttt{scripts/infinite\_family\_audit.py} recomputes the recurrences and endpoint values as an independent regression test, while the mathematical argument remains the symbolic one in Sections 4--5.
+
+\section{Concrete arithmetic used by the carry trees}
+For reproducibility, the rescaling equalities used above are
+\[
+\begin{array}{c|c}
+ k=8 &
+1125\cdot8=9\cdot10^3,\quad
+15\cdot8=12\cdot10,\quad
+25\cdot8=20\cdot10,\\
+&125\cdot8=10\cdot10^2,\quad
+2125\cdot8=17\cdot10^3,\quad
+2250\cdot8=18\cdot10^3,\\
+&45\cdot8=36\cdot10,\quad
+375\cdot8=30\cdot10^2,\quad
+1750\cdot8=14\cdot10^3,\quad
+2750\cdot8=22\cdot10^3;\\[1ex]
+ k=10 &
+2\cdot10=20,\quad
+c\cdot10=c\cdot10^1\quad(c\in\{12,13,15,21,22,24\}).
+\end{array}
+\]
+Every numerical identity and profile maximum appearing in the tables is reproduced by \texttt{scripts/arithmetic\_audit.py}.
+
+\section{Local carry-completeness table}\label{app:local}
+The finite local statements used in the $k=8$ and $k=10$ trees are summarized below.  The word ``exception'' refers to a relative placement at which the proposed secondary rescaling has a carry and therefore requires the displayed terminal leaf.  These are local position classes, not ranges of integers $n$.
+
+\begin{center}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Branch & Product blocks & admissible exceptions & terminal resolution \\
+\midrule
+$8:6+1+1$ & $150,25,25$ & primary motif $16$ & $125\cdot16=2000$ with the remaining $125$ block \\
+$8:5+3$ & $125,75$ & primary motif $53$ & $2125\cdot53=112625$, digit sum $17$ \\
+$8:52+1$ & $110500,2125$ & offset $2$ only & $125\cdot152=19000$, digit sum $10$ \\
+$8:12+5$ & $27000,11250$ & offset $2$ only & $125\cdot512=64000$, digit sum $10$ \\
+$8:115+1$ & $43125,375$ & offsets $-1,3$ & $1151\mapsto14$, $1115\mapsto22$ \\
+$10:5+4+1$ & $105,84,21$ & primary motifs $54,145$ & branch to $24$ or $12$ \\
+$10:54+1$ & $1296,24$ & none & target $24$ \\
+$10:5+3+2$ & $105,63,42$ & primary motif $53$ & branch to $24$ \\
+$10:53+2$ & $1272,48$ & offset $2$ only & $12\cdot253=3036$, digit sum $12$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+For the two-block rows, once the relative shift is farther than the combined profile width the blocks are separated by \cref{lem:blocksep}; hence checking the finitely many overlapping shifts proves completeness.  The independent arithmetic audit reconstructs exactly the same exceptional offset sets.
+
+\section{Local arithmetic for the pure-power eleven-family}\label{app:11transfer}
+This appendix makes explicit why the two residue classes in \cref{eq:11familycrossA,eq:11familycrossB} are exhaustive.  The residue table in the main text gives $W_r\in\{81,63,45,27,09,90,72,54,36,18\}$ and $T_r\in\{82,64,46,28,10,92,74,56,38,20\}$.  Since $q_t=100^{t+2}$, the lower correction at the right endpoint changes exactly one $W_r$ block to $W_r+2$.  The ten changes are
+\[
+\begin{array}{c|cccccccccc}
+W_r&81&63&45&27&09&90&72&54&36&18\\ \hline
+\ds(W_r+2)-\ds(W_r)&2&2&2&2&-7&2&2&2&2&-7.
+\end{array}
+\]
+Thus the exceptional blocks are exactly $09$ and $18$, corresponding to $r=5,10$.
+
+At the left endpoint the additional subtraction of $2$ acts only on the two-digit tail.  The changes are
+\[
+\begin{array}{c|cccccccccc}
+T_r&82&64&46&28&10&92&74&56&38&20\\ \hline
+\ds(T_r-2)&8&8&8&8&8&9&9&9&9&9.
+\end{array}
+\]
+Combining these rows with $h_r$ and $r$ gives exactly two possible correction constants:
+\[
+\begin{array}{c|cc}
+ & h_r+\ds(T_r)+\ds(W_r+2)-9-r
+ & h_r+\ds(T_r-2)+\ds(W_r+2)-9-r\\ \hline
+r\notin\{5,10\}&11&9\\
+r\in\{5,10\}&-7&0.
+\end{array}
+\]
+This is the complete local arithmetic used in the proof.  There is no further carry state, because $W_r+2<100$, and no further borrow state, because every $T_r\ge10$.
+
+\clearpage
+\section{Formal theorem map}
+This map is provided only for navigation of the supplementary source and is not part of the logical dependency of the manuscript.  The principal paper-to-Lean correspondences are:
+\begin{center}
+\small
+\begin{tabular}{@{}P{4.6cm}P{10.0cm}@{}}
+\toprule
+Mathematical statement & Lean declaration / file \\
+\midrule
+Separated decimal blocks & \texttt{digitSum10\_append}\newline \texttt{Basic.lean} \\
+Digit-sum subadditivity & \texttt{digitSum10\_add\_le}\newline \texttt{Basic.lean} \\
+Decimal rescaling & \texttt{larger\_good\_of\_witness}\newline \texttt{CarryObstruction/Theory.lean} \\
+Carry certificate soundness & \texttt{carryObstruction\_of\_valid\_certificate}\newline \texttt{CarryObstruction/Certificate.lean} \\
+Small carry obstruction & \texttt{carryObstruction\_of\_forbiddenSmall}\newline \texttt{CarryObstruction/Small.lean} \\
+Defect monotonicity & \texttt{defect\_add\_period\_le}\newline \texttt{PeriodicCrossing/Defect.lean} \\
+Crossing criterion & \texttt{maxGood\_of\_crossings}\newline \texttt{PeriodicCrossing/Defect.lean} \\
+Periodic block normal form & \texttt{periodicN\_mul\_blockForm}\newline \texttt{PeriodicCrossing/Blocks.lean} \\
+Aligned periodic-block update & \texttt{digitSum10\_repeatBlock\_update}\newline \texttt{PeriodicCrossing/AlignedUpdate.lean} \\
+Infinite $7$ family & \texttt{N7Family\_maxGood}, \texttt{N7Family\_not\_decimal\_scaled}, \texttt{infinitely\_many\_maxGood\_seven}\newline \texttt{PeriodicCrossing/SevenFamily.lean} \\
+Infinite $11$ family & \texttt{N11Family\_maxGood}, \texttt{N11Family\_not\_decimal\_scaled}, \texttt{infinitely\_many\_maxGood\_eleven}\newline \texttt{PeriodicCrossing/ElevenFamily.lean} \\
+Final spectrum & \texttt{small\_value\_spectrum\_iff}\newline \texttt{Main.lean} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

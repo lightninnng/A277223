@@ -1,0 +1,7 @@
+.lake/
+*.olean
+*.ilean
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.pdf

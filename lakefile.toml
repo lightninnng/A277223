@@ -1,0 +1,11 @@
+name = "A277223Formal"
+version = "0.1.0"
+defaultTargets = ["A277223"]
+
+[[lean_lib]]
+name = "A277223"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.32.2"

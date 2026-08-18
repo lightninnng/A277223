@@ -1,0 +1,49 @@
+name: Lean CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerate carry certificates
+        run: |
+          python3 scripts/generate_carry_certificates.py
+          git diff --exit-code -- \
+            A277223/CarryObstruction/Eight.lean \
+            A277223/CarryObstruction/Ten.lean
+
+      - name: Independent arithmetic audit
+        run: |
+          python3 scripts/arithmetic_audit.py
+          python3 scripts/infinite_family_audit.py
+
+      - name: Static Lean dependency audit
+        run: python3 scripts/static_lean_audit.py
+
+      - name: Reject placeholders and custom axioms
+        run: |
+          if grep -R -n -E '(^|[^A-Za-z])(sorry|admit|axiom)([^A-Za-z]|$)' A277223 --include='*.lean'; then
+            echo 'Forbidden proof placeholder/custom axiom found.'
+            exit 1
+          fi
+
+      - name: Confirm pinned toolchain
+        run: |
+          grep -Fx 'leanprover/lean4:v4.32.2' lean-toolchain
+          grep -F 'rev = "v4.32.2"' lakefile.toml
+
+      - uses: leanprover/lean-action@v1
+        with:
+          build: true
+          use-mathlib-cache: true
+          leanchecker: true
+          nanoda: true
+          nanoda-allow-sorry: false
