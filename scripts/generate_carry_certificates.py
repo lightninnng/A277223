@@ -82,16 +82,15 @@ def write_cert(k: int, stem: str, specs):
     states, flat, terminal_count = generate(k, specs)
     cert_name = f"cert{k}"
     theorem_name = "eight" if k == 8 else "ten"
-    chunk_size = 512
+    chunk_size = 128
     n = len(states)
     ranges = [(lo, min(lo + chunk_size, n)) for lo in range(0, n, chunk_size)]
 
-    # --- data module: the state/transition literals, elaborated in their own
-    # process so the memory footprint never overlaps with kernel checking of
-    # the proof modules.  Both arrays are emitted as bounded-size parts
-    # concatenated with ++: a single 76080-element literal overwhelms the
-    # elaborator in the Mathlib environment (cascading 'Function expected'
-    # errors near the end of the table) even though core Lean copes ---
+    # --- data module: the state table plus one base-8192 encoded transition
+    # row per state, elaborated in its own process so the memory footprint
+    # never overlaps with kernel checking of the proof modules.  A flat
+    # table of 10 * n tiny literals overruns the elaborator in the Mathlib
+    # environment on large certificates; n modest literals do not ---
     dpath = OUT / f"{stem}Data.lean"
     with dpath.open("w", encoding="utf-8", newline="\n") as f:
         f.write("import A277223.CarryObstruction.Certificate\n\n")
@@ -100,34 +99,28 @@ def write_cert(k: int, stem: str, specs):
         f.write(f"States: {n}; mass-`{k}` terminal states: {terminal_count}.\n")
         f.write("The generator is `scripts/generate_carry_certificates.py`; this file is\n")
         f.write("re-checked by Lean and is not trusted as an external oracle.\n")
-        f.write("Both tables are emitted as bounded parts concatenated with `++`;\n")
-        f.write("a single table-sized literal overruns the elaborator.\n")
+        f.write("Each `next` entry encodes one ten-way transition row as\n")
+        f.write("`SUM_d next_d * 8192^d`; see `Certificate.nextId`.\n")
         f.write("-/\n\n")
         f.write("namespace A277223\nnamespace CarryObstruction\nnamespace Certificate\n\n")
         f.write("set_option maxHeartbeats 0\n")
         f.write("set_option maxRecDepth 1000000\n")
         f.write(lean_specs(f"cert{k}", specs))
         f.write("\n")
-
-        def write_parts(prefix, ty, entries, per_part, per_line, render):
-            parts = [entries[i:i + per_part] for i in range(0, len(entries), per_part)]
-            for p, part in enumerate(parts):
-                f.write(f"def {prefix}Part{p} : Array {ty} := #[\n")
-                for chunk in chunks(part, per_line):
-                    f.write("    " + " ".join(render(x) + "," for x in chunk) + "\n")
-                f.write("  ]\n\n")
-            f.write(f"def {prefix} : Array {ty} := " +
-                    " ++ ".join(f"{prefix}Part{p}" for p in range(len(parts))) + "\n\n")
-
-        write_parts(
-            f"{cert_name}States", "MachineState", states, 2000, 4, lean_state)
-        write_parts(
-            f"{cert_name}Next", "ℕ", flat, 8000, 30, str)
-
         f.write(f"def {cert_name} : CarryCertificate := {{\n")
         f.write(f"  specs := cert{k}Specs\n")
-        f.write(f"  states := {cert_name}States\n")
-        f.write(f"  next := {cert_name}Next\n")
+        f.write("  states := #[\n")
+        for chunk in chunks(states, 4):
+            f.write("    " + ",\n    ".join(lean_state(s) for s in chunk) + ",\n")
+        f.write("  ]\n")
+        rows = []
+        for i in range(0, len(flat), 10):
+            row = flat[i:i + 10]
+            rows.append(sum(int(v) * 8192 ** d for d, v in enumerate(row)))
+        f.write("  next := #[\n")
+        for chunk in chunks(rows, 10):
+            f.write("    " + ", ".join(map(str, chunk)) + ",\n")
+        f.write("  ]\n")
         f.write("  initial := 0\n")
         f.write("}\n\n")
         f.write("end Certificate\nend CarryObstruction\nend A277223\n")
@@ -136,7 +129,7 @@ def write_cert(k: int, stem: str, specs):
     # proofs are split at most five per module file: kernel-decide allocations
     # accumulate within one lean process, so each process checks a bounded
     # number of ranges and stays well inside a 16 GB build host ---
-    chunks_per_file = 5
+    chunks_per_file = 10
     parts = [ranges[i:i + chunks_per_file] for i in range(0, len(ranges), chunks_per_file)]
     part_names = []
     for p in range(len(parts)):
@@ -177,7 +170,7 @@ def write_cert(k: int, stem: str, specs):
                 f.write("  decide +kernel\n\n")
                 f.write("set_option maxHeartbeats 0 in\n")
                 f.write("set_option maxRecDepth 1000000 in\n")
-                f.write(f"theorem {cert_name}_header : {cert_name}.next.size = 10 * {cert_name}.states.size ∧\n")
+                f.write(f"theorem {cert_name}_header : {cert_name}.next.size = {cert_name}.states.size ∧\n")
                 f.write(f"    {cert_name}.initial < {cert_name}.states.size ∧\n")
                 f.write(f"    stateAt {cert_name} {cert_name}.initial = initialState {cert_name}.specs := by\n")
                 f.write("  decide +kernel\n\n")

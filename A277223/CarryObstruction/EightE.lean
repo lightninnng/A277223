@@ -1,7 +1,7 @@
-import A277223.CarryObstruction.EightData
+import A277223.CarryObstruction.EightD
 
 /-!
-Range checks 0..1280 of the generated carry
+Range checks 5120..6400 of the generated carry
 certificate for target `8`, split out to bound process memory.
 -/
 
@@ -14,52 +14,52 @@ set_option maxRecDepth 1000000
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_0 : rangeOK 8 cert8 0 128 = true := by
+theorem cert8_chunk_40 : rangeOK 8 cert8 5120 5248 = true := by
   decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_1 : rangeOK 8 cert8 128 256 = true := by
+theorem cert8_chunk_41 : rangeOK 8 cert8 5248 5376 = true := by
   decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_2 : rangeOK 8 cert8 256 384 = true := by
+theorem cert8_chunk_42 : rangeOK 8 cert8 5376 5504 = true := by
   decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_3 : rangeOK 8 cert8 384 512 = true := by
+theorem cert8_chunk_43 : rangeOK 8 cert8 5504 5632 = true := by
   decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_4 : rangeOK 8 cert8 512 640 = true := by
+theorem cert8_chunk_44 : rangeOK 8 cert8 5632 5760 = true := by
   decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_5 : rangeOK 8 cert8 640 768 = true := by
+theorem cert8_chunk_45 : rangeOK 8 cert8 5760 5888 = true := by
   decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_6 : rangeOK 8 cert8 768 896 = true := by
+theorem cert8_chunk_46 : rangeOK 8 cert8 5888 6016 = true := by
   decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_7 : rangeOK 8 cert8 896 1024 = true := by
+theorem cert8_chunk_47 : rangeOK 8 cert8 6016 6144 = true := by
   decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_8 : rangeOK 8 cert8 1024 1152 = true := by
+theorem cert8_chunk_48 : rangeOK 8 cert8 6144 6272 = true := by
   decide +kernel
 
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 1000000 in
-theorem cert8_chunk_9 : rangeOK 8 cert8 1152 1280 = true := by
+theorem cert8_chunk_49 : rangeOK 8 cert8 6272 6400 = true := by
   decide +kernel
 
 end Certificate

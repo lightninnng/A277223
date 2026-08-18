@@ -189,7 +189,13 @@ theorem terminalHit_semantic_sound (k : ℕ) (L : List ℕ) :
         exact hhead.2.2
       · exact terminalHit_semantic_sound k L specs htail
 
-/-- Certificate data: exact states plus a flat ten-way transition table. -/
+/-- Certificate data: exact states plus one encoded transition row per state.
+
+Each transition row for state `i` is the single natural number
+`Σ_d next[i][d] * 8192^d`; all target indices are below 8192, so every row
+decodes exactly.  A flat `next` table of `10 * states.size` tiny literals
+overruns the elaborator on large certificates, while one modest literal per
+state elaborates like the state table itself. -/
 structure CarryCertificate where
   specs : List WitnessSpec
   states : Array MachineState
@@ -200,24 +206,24 @@ structure CarryCertificate where
 def stateAt (cert : CarryCertificate) (i : ℕ) : MachineState :=
   (cert.states[i]?).getD defaultState
 
-/-- Transition ID; rows are stored consecutively for digits `0,...,9`. -/
+/-- Transition ID for digit `d`, decoded from the base-8192 row encoding. -/
 def nextId (cert : CarryCertificate) (i d : ℕ) : ℕ :=
-  (cert.next[10 * i + d]?).getD 0
+  ((cert.next[i]?).getD 0 / 8192 ^ d) % 8192
 
 /--
-A proof-carrying certificate is valid when the initial state is present, every
-transition compatible with total digit mass `k` is represented exactly, and
-every mass-`k` state has a terminal rescaling hit.
+A proof-carrying certificate is valid when the initial state is present,
+every transition compatible with total digit mass `k` is represented exactly,
+and every mass-`k` state has a terminal rescaling hit.
 -/
 def CarryCertificate.Valid (k : ℕ) (cert : CarryCertificate) : Prop :=
-  cert.next.size = 10 * cert.states.size ∧
+  cert.next.size = cert.states.size ∧
   cert.initial < cert.states.size ∧
   stateAt cert cert.initial = initialState cert.specs ∧
   (∀ i : Fin cert.states.size, ∀ d : Fin 10,
       (stateAt cert i.val).mass + d.val ≤ k →
         nextId cert i.val d.val < cert.states.size ∧
-        stateAt cert (nextId cert i.val d.val) =
-          stepState cert.specs (stateAt cert i.val) d.val) ∧
+          stateAt cert (nextId cert i.val d.val) =
+            stepState cert.specs (stateAt cert i.val) d.val) ∧
   (∀ i : Fin cert.states.size,
       (stateAt cert i.val).mass = k →
         terminalHit k cert.specs (stateAt cert i.val).lanes = true)
