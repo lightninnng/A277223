@@ -118,7 +118,6 @@ theorem N11Family_digitSum_right {t r : ℕ} (hr0 : 0 < r) (hr11 : r < 11) :
   have hq : q11Family t = 100 * 10 ^ (2 * (t + 1)) := by
     unfold q11Family
     rw [show 2 * (t + 2) = 2 + 2 * (t + 1) by omega, Nat.pow_add]
-    norm_num
   have hloweq :
       10 ^ 2 * repeatBlock (a11 r * 9) 2 (M11Family t) +
           (2 * q11Family t + T11 r) =
@@ -126,7 +125,7 @@ theorem N11Family_digitSum_right {t r : ℕ} (hr0 : 0 < r) (hr11 : r < 11) :
           (repeatBlock (a11 r * 9) 2 (M11Family t) + 2 * 10 ^ (2 * (t + 1))) := by
     rw [hq]
     ring
-  rw [hprod, hloweq]
+  rw [show N11Family t = periodicN 9 9 82 2 (M11Family t) 2 from rfl, hprod, hloweq]
   rw [show (9 * q11Family t + h11 r) * 10 ^ (2 * M11Family t + 2) +
         (T11 r + 10 ^ 2 *
           (repeatBlock (a11 r * 9) 2 (M11Family t) + 2 * 10 ^ (2 * (t + 1)))) =
@@ -173,7 +172,6 @@ theorem N11Family_digitSum_left {t r : ℕ} (hr0 : 0 < r) (hr11 : r < 11) :
   have hq : q11Family t = 100 * 10 ^ (2 * (t + 1)) := by
     unfold q11Family
     rw [show 2 * (t + 2) = 2 + 2 * (t + 1) by omega, Nat.pow_add]
-    norm_num
   have htail : 2 * (q11Family t - 1) + T11 r =
       2 * q11Family t + (T11 r - 2) := by omega
   have hloweq :
@@ -183,7 +181,7 @@ theorem N11Family_digitSum_left {t r : ℕ} (hr0 : 0 < r) (hr11 : r < 11) :
           (repeatBlock (a11 r * 9) 2 (M11Family t) + 2 * 10 ^ (2 * (t + 1))) := by
     rw [htail, hq]
     ring
-  rw [hprod, hloweq]
+  rw [show N11Family t = periodicN 9 9 82 2 (M11Family t) 2 from rfl, hprod, hloweq]
   rw [show (9 * (q11Family t - 1) + h11 r) * 10 ^ (2 * M11Family t + 2) +
         ((T11 r - 2) + 10 ^ 2 *
           (repeatBlock (a11 r * 9) 2 (M11Family t) + 2 * 10 ^ (2 * (t + 1)))) =

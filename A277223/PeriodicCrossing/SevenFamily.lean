@@ -116,7 +116,6 @@ theorem N7Family_digitSum_right {t r : ℕ} (hr0 : 0 < r) (hr7 : r < 7) :
   have hq : q7Family t = 100 * 10 ^ (6 * t) := by
     unfold q7Family u7Family
     rw [show 6 * t + 2 = 2 + 6 * t by omega, Nat.pow_add]
-    norm_num
   have hloweq :
       10 ^ 2 * repeatBlock (a7 r * 142857) 6 (M7Family t) +
           (11 * q7Family t + T7 r) =
@@ -124,7 +123,7 @@ theorem N7Family_digitSum_right {t r : ℕ} (hr0 : 0 < r) (hr7 : r < 7) :
           (repeatBlock (a7 r * 142857) 6 (M7Family t) + 11 * 10 ^ (6 * t)) := by
     rw [hq]
     ring
-  rw [hprod, hloweq]
+  rw [show N7Family t = periodicN 5 142857 73 6 (M7Family t) 2 from rfl, hprod, hloweq]
   rw [show (5 * q7Family t + h7 r) * 10 ^ (6 * M7Family t + 2) +
         (T7 r + 10 ^ 2 *
           (repeatBlock (a7 r * 142857) 6 (M7Family t) + 11 * 10 ^ (6 * t))) =
@@ -172,7 +171,6 @@ theorem N7Family_digitSum_left {t r : ℕ} (hr0 : 0 < r) (hr7 : r < 7) :
   have hq : q7Family t = 100 * 10 ^ (6 * t) := by
     unfold q7Family u7Family
     rw [show 6 * t + 2 = 2 + 6 * t by omega, Nat.pow_add]
-    norm_num
   have htail : 11 * (q7Family t - 1) + T7 r =
       11 * q7Family t + (T7 r - 11) := by omega
   have hloweq :
@@ -182,7 +180,7 @@ theorem N7Family_digitSum_left {t r : ℕ} (hr0 : 0 < r) (hr7 : r < 7) :
           (repeatBlock (a7 r * 142857) 6 (M7Family t) + 11 * 10 ^ (6 * t)) := by
     rw [htail, hq]
     ring
-  rw [hprod, hloweq]
+  rw [show N7Family t = periodicN 5 142857 73 6 (M7Family t) 2 from rfl, hprod, hloweq]
   rw [show (5 * (q7Family t - 1) + h7 r) * 10 ^ (6 * M7Family t + 2) +
         ((T7 r - 11) + 10 ^ 2 *
           (repeatBlock (a7 r * 142857) 6 (M7Family t) + 11 * 10 ^ (6 * t))) =
