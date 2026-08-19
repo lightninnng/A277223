@@ -133,7 +133,8 @@ theorem no_positive_good_62 {k : ℕ} (hkpos : 0 < k) : ¬ Good 62 k := by
   obtain ⟨q, hkq⟩ := nine_dvd_good_62 hk
   have hqpos : 0 < q := by omega
   have hq4 : q ≤ 4 := by omega
-  interval_cases q <;> subst k <;> norm_num [Good, digitSum10, Nat.digits] at hk
+  interval_cases q <;> subst k <;> unfold Good at hk <;>
+    exact absurd hk (by decide +kernel)
 
 /-- Sixty-two has no positive Good multiplier, hence its maximum is zero. -/
 theorem sixtyTwo_maxGood_zero : MaxGood 62 0 := by
