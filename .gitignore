@@ -7,3 +7,4 @@ paper/*.out
 paper/*.pdf
 dryrun/
 __pycache__/
+ci_tmp.log
