@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Independent arithmetic audit for the nontrivial infinite 7- and 11-families.
+"""Independent arithmetic checks for the parameterized 7- and 11-families.
 
-This is diagnostic only.  The manuscript proofs are symbolic; this script
-recomputes the finite residue tables and selected huge-integer instances.
+The manuscript proofs are symbolic. This script verifies the defining
+recurrences, residue tables, endpoint formulas, and selected direct instances
+as a regression layer independent of the Lean source.
 """
 from __future__ import annotations
 import sys
@@ -57,7 +58,7 @@ def audit7() -> None:
         assert 7*10**u == 27*m + 25
         assert m >= u
 
-    # Original 152-digit witness is t=0.
+    # The 152-digit witness is the first family member.
     assert M7(0) == 25
     assert 6*M7(0)+2 == 152
 
@@ -151,12 +152,10 @@ def audit11() -> None:
                 assert (18*t+27) > 0
                 assert -9 < 0
 
-    # Direct arbitrary-precision audit only on t=0.  Already at t=1 the
-    # member N11(1) has about 2.44 million decimal digits, so constructing it
-    # is a poor CI regression test and adds no coverage beyond the exact
-    # symbolic block identities checked above.  Higher t are therefore
-    # audited through the recurrence, balance law, complete residue table,
-    # and endpoint formulas rather than by materializing enormous integers.
+    # Materialize t=0 directly. For higher indices, verify the exact recurrence,
+    # balance law, complete residue table, and endpoint formulas. This keeps the
+    # check proportional to the proof data rather than to the decimal length of
+    # the family member (which grows extremely quickly).
     t = 0
     n=N11(t); q=q11(t)
     assert ds(11*n)==11
@@ -171,7 +170,7 @@ def audit11() -> None:
             assert left == 18*t+27
             assert right == -9
 
-    # Retain the compact 52-digit witness as a separate audited example.
+    # Verify the 52-digit witness as a separate direct example.
     ns=N11_small()
     assert ds(11*ns)==11
     assert ds(22*ns)-22 == -9

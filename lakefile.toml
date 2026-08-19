@@ -9,9 +9,3 @@ name = "A277223"
 name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.32.2"
-
-# This trailing table is ignored by Lake (verified: the build proceeds
-# normally) but read by lean-action's nanoda launcher, which detects the
-# module name from a `[package]` section header followed by a `name` key.
-[package]
-name = "A277223"

@@ -1,10 +1,11 @@
 .lake/
 *.olean
 *.ilean
+*.pyc
+__pycache__/
 paper/*.aux
+paper/*.fdb_latexmk
+paper/*.fls
 paper/*.log
 paper/*.out
-paper/*.pdf
-dryrun/
-__pycache__/
-ci_tmp.log
+paper/*.synctex.gz

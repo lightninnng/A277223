@@ -6,7 +6,7 @@ States: 7608; mass-`8` terminal states: 4481.
 The generator is `scripts/generate_carry_certificates.py`; this file is
 re-checked by Lean and is not trusted as an external oracle.
 Both tables are packed into single natural numbers; see the packing
-layout comment in `Certificate.lean` (13-bit fields, native shifts).
+layout comment in `Certificate.lean` (13-bit fields and bit shifts).
 -/
 
 namespace A277223

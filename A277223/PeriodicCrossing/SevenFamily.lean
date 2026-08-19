@@ -4,7 +4,7 @@ import Mathlib.Order.Monotone.Basic
 import A277223.PeriodicCrossing.AlignedUpdate
 
 /-!
-# A nontrivial infinite family with maximal Good multiplier seven
+# An infinite family with maximal Good multiplier seven
 
 The crossing is placed at the pure decimal boundary `q = 10^(6*t+2)`.
 The block count is chosen by the exact balance `27*M + 25 = 7*q`.

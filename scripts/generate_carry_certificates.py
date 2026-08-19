@@ -110,7 +110,7 @@ def write_cert(k: int, stem: str, specs):
         f.write("The generator is `scripts/generate_carry_certificates.py`; this file is\n")
         f.write("re-checked by Lean and is not trusted as an external oracle.\n")
         f.write("Both tables are packed into single natural numbers; see the packing\n")
-        f.write("layout comment in `Certificate.lean` (13-bit fields, native shifts).\n")
+        f.write("layout comment in `Certificate.lean` (13-bit fields and bit shifts).\n")
         f.write("-/\n\n")
         f.write("namespace A277223\nnamespace CarryObstruction\nnamespace Certificate\n\n")
         f.write("set_option maxHeartbeats 0\n")
@@ -130,9 +130,8 @@ def write_cert(k: int, stem: str, specs):
         f.write("}\n\n")
         f.write("end Certificate\nend CarryObstruction\nend A277223\n")
 
-    # --- proof module: bounded-range kernel checks plus assembly; the
-    # packed-arithmetic checker is cheap per state, so all ranges live in
-    # one file (chunks exist for diagnostic granularity only) ---
+    # --- proof module: bounded-range kernel checks plus a proof that the
+    # ranges cover the complete certificate state space. ---
     chunk_size = 1024
     ranges = [(lo, min(lo + chunk_size, n)) for lo in range(0, n, chunk_size)]
     path = OUT / f"{stem}.lean"

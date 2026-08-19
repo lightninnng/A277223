@@ -7,9 +7,13 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -17,15 +21,17 @@ jobs:
         run: |
           python3 scripts/generate_carry_certificates.py
           git diff --exit-code -- \
+            A277223/CarryObstruction/EightData.lean \
             A277223/CarryObstruction/Eight.lean \
+            A277223/CarryObstruction/TenData.lean \
             A277223/CarryObstruction/Ten.lean
 
-      - name: Independent arithmetic audit
+      - name: Arithmetic and family checks
         run: |
           python3 scripts/arithmetic_audit.py
           python3 scripts/infinite_family_audit.py
 
-      - name: Static Lean dependency audit
+      - name: Static Lean source check
         run: python3 scripts/static_lean_audit.py
 
       - name: Reject placeholders and custom axioms
@@ -44,34 +50,24 @@ jobs:
         run: |
           curl -L https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
           sh elan-init.sh -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Fetch dependencies and Mathlib build cache
+      - name: Fetch dependencies and Mathlib cache
         run: lake exe cache get
 
-      # The generated carry certificates (Eight: 7608 states, Ten: 1543) and the
-      # two parameterized family modules are elaborated one per lake process.
-      # Lake schedules independent modules concurrently and their combined
-      # memory footprint exhausts the 16 GB runner, killing the job.
-      - name: Build Eight certificate (heavy, sequential)
-        run: lake build A277223.CarryObstruction.Eight
+      # These modules have the highest peak elaboration memory. Building them
+      # sequentially changes only scheduling; Lake reuses the checked artifacts
+      # in the final whole-project build below.
+      - name: Prebuild memory-intensive modules sequentially
+        run: |
+          lake build A277223.CarryObstruction.Eight
+          lake build A277223.CarryObstruction.Ten
+          lake build A277223.PeriodicCrossing.SevenFamily
+          lake build A277223.PeriodicCrossing.ElevenFamily
 
-      - name: Build Ten certificate (heavy, sequential)
-        run: lake build A277223.CarryObstruction.Ten
-
-      - name: Build SevenFamily (heavy, sequential)
-        run: lake build A277223.PeriodicCrossing.SevenFamily
-
-      - name: Build ElevenFamily (heavy, sequential)
-        run: lake build A277223.PeriodicCrossing.ElevenFamily
-
-      - uses: leanprover/lean-action@v1
+      - name: Full Lean build and leanchecker recheck
+        uses: leanprover/lean-action@v1
         with:
           build: true
           use-mathlib-cache: true
           leanchecker: true
-          # nanoda is disabled: it cannot parse the Lean 4.28+ export stream
-          # ("invalid digit found in string"), an open upstream incompatibility
-          # tracked in leanprover/lean-action#169.  Independent re-checking is
-          # provided by leanchecker, which passes.  Re-enable once nanoda
-          # supports the Lean 4.32 export format.

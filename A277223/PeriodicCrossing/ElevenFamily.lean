@@ -4,7 +4,7 @@ import Mathlib.Order.Monotone.Basic
 import A277223.PeriodicCrossing.AlignedUpdate
 
 /-!
-# A nontrivial infinite family with maximal Good multiplier eleven
+# An infinite family with maximal Good multiplier eleven
 
 For this family every nonzero residue class crosses at the same pure decimal
 boundary `q = 10^(2*(t+2))`.  The aligned correction changes one width-two

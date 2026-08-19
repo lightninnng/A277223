@@ -192,12 +192,10 @@ theorem terminalHit_semantic_sound (k : ℕ) (L : List ℕ) :
 /-!
 ### Packed certificate data
 
-Kernel `decide` re-evaluates an array literal at every access with no
-sharing, so a table-shaped certificate costs one full table construction
-per lookup and quickly exhausts both time and memory.  The certificate
-therefore stores both tables as single natural numbers and decodes with
-the kernel's native bitwise operations (`>>>`, `&&&`), which operate
-directly on GMP integers in time linear in the number's size.
+The finite state and transition tables are stored as packed natural numbers.
+Lookup is defined by ordinary natural-number shifts and masks (`>>>`, `&&&`),
+so the reflected checker remains a deterministic kernel-reducible expression
+without introducing an external evaluation oracle.
 
 Packing layout (little-endian, 13 bits per field, all values below 8192):
 a state occupies `stateBits = 13 * (1 + 2 * laneCount)` bits: the mass,
@@ -260,14 +258,12 @@ instance instDecidableValid (k : ℕ) (cert : CarryCertificate) : Decidable (cer
 /-!
 ### Range-restricted certificate checks
 
-A single `decide +kernel` over the whole state table of a large certificate
-(the `k = 8` machine has 7608 states) does not fit into the memory of a
-standard 16 GB build host: the kernel reduction of the complete `Valid`
-proposition allocates for every state simultaneously.  The per-state
-obligations are therefore reflected into a boolean checker over a state-index
-range; a certificate file discharges each bounded range with its own
-`decide +kernel`, and `valid_of_rangeOK` reassembles complete validity from
-the chunk results with an ordinary proof term.
+Certificate validity is decomposed into bounded state-index ranges.  Each
+range is reflected to a boolean checker and discharged independently by
+`decide +kernel`; `valid_of_rangeOK` then proves that the checked ranges cover
+the complete state space and reassembles the full `Valid` proposition.  The
+partition changes only the granularity of kernel reduction, not the statement
+being proved.
 -/
 
 /-- Boolean reflection of the per-state obligations of `CarryCertificate.Valid`. -/

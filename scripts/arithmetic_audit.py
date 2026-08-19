@@ -1,5 +1,12 @@
+#!/usr/bin/env python3
+"""Independent arithmetic regression checks for the manuscript.
+
+The checks cover the finite digit partitions, local carry motifs and shifts,
+periodic normal forms, explicit witnesses, and a finite sanity sample. They are
+not proof dependencies; the manuscript and Lean development provide the proofs.
+"""
+
 from itertools import combinations, permutations
-from math import gcd
 
 FORBIDDEN = {1,2,3,4,5,6,8,10}
 
@@ -66,12 +73,12 @@ def has_adjacent_motif(config:list[tuple[int,int]], motif:str)->bool:
 
 def audit_primary_motifs(parts:list[int], c:int, target:int, motifs:list[str], radius:int=8)->int:
     """
-    Independent finite-local audit of the first-carry motif classification.
+    Independent finite-local check of the first-carry motif classification.
 
     Translation is normalized by requiring the lowest occupied exponent to be 0.
     The radius exceeds every product-profile width used in the paper.  Locality
     proves that larger gaps cannot introduce a new first carry; this routine is
-    therefore an audit of the explicit motif table, not a search over integers.
+    therefore a check of the explicit motif table, not a search over integers.
     """
     checked=0
     for exps in permutations(range(radius+1),len(parts)):

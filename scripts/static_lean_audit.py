@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Static, non-elaborating audit of the local Lean project structure.
+"""Static source check for the local Lean project.
 
-This script is intentionally not called a compiler.  It checks the local module
-DAG, version pins, and forbidden placeholders so that environment failures are
-separated cleanly from Lean elaboration failures.
+This complements, but does not replace, Lean elaboration. It checks the local
+module DAG, version pins, proof placeholders, and trust-sensitive constructs.
 """
 from __future__ import annotations
 from pathlib import Path
