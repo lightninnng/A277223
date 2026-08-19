@@ -1,6 +1,22 @@
 # Formalization status
 
-Snapshot date: 2026-08-17.
+Snapshot date: 2026-08-19.
+
+## Certification record
+
+The full gate is GREEN on commit `9381a50`:
+
+https://github.com/lightninnng/A277223/actions/runs/32217966931
+
+All sixteen Lean modules compile under the pinned Lean 4.32.2 / Mathlib
+v4.32.2 environment; the 7608-state `k = 8` certificate and the 1543-state
+`k = 10` certificate are discharged by kernel-checked bounded-range
+decides over packed-arithmetic tables (`Certificate.lean`), reassembled by
+`valid_of_rangeOK`; `leanchecker` re-verified the whole environment
+independently.  Certificate tables are generated
+(`scripts/generate_carry_certificates.py`) and regenerated drift-free in
+CI.  Remaining item for a release: the final paper/source theorem-map
+review against this exact commit.
 
 ## Mathematical theorem status
 
