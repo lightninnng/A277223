@@ -125,13 +125,13 @@ theorem N7Family_digitSum_right {t r : ℕ} (hr0 : 0 < r) (hr7 : r < 7) :
     ring
   rw [show N7Family t = periodicN 5 142857 73 6 (M7Family t) 2 from rfl, hprod]
   first
-  · rw [show ((5 * q7Family t + h7 r) * 10 ^ (6 * M7Family t + 2) +
+  | rw [show ((5 * q7Family t + h7 r) * 10 ^ (6 * M7Family t + 2) +
         10 ^ 2 * repeatBlock (a7 r * 142857) 6 (M7Family t)) +
         (11 * q7Family t + T7 r) =
       (5 * q7Family t + h7 r) * 10 ^ (6 * M7Family t + 2) +
         (10 ^ 2 * repeatBlock (a7 r * 142857) 6 (M7Family t) +
         (11 * q7Family t + T7 r)) by ring]
-  · skip
+  | skip
   rw [hloweq]
   rw [show (5 * q7Family t + h7 r) * 10 ^ (6 * M7Family t + 2) +
         (T7 r + 10 ^ 2 *
@@ -191,13 +191,13 @@ theorem N7Family_digitSum_left {t r : ℕ} (hr0 : 0 < r) (hr7 : r < 7) :
     ring
   rw [show N7Family t = periodicN 5 142857 73 6 (M7Family t) 2 from rfl, hprod]
   first
-  · rw [show ((5 * (q7Family t - 1) + h7 r) * 10 ^ (6 * M7Family t + 2) +
+  | rw [show ((5 * (q7Family t - 1) + h7 r) * 10 ^ (6 * M7Family t + 2) +
         10 ^ 2 * repeatBlock (a7 r * 142857) 6 (M7Family t)) +
         (11 * (q7Family t - 1) + T7 r) =
       (5 * (q7Family t - 1) + h7 r) * 10 ^ (6 * M7Family t + 2) +
         (10 ^ 2 * repeatBlock (a7 r * 142857) 6 (M7Family t) +
         (11 * (q7Family t - 1) + T7 r)) by ring]
-  · skip
+  | skip
   rw [hloweq]
   rw [show (5 * (q7Family t - 1) + h7 r) * 10 ^ (6 * M7Family t + 2) +
         ((T7 r - 11) + 10 ^ 2 *
