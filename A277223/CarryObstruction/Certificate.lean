@@ -189,26 +189,50 @@ theorem terminalHit_semantic_sound (k : ℕ) (L : List ℕ) :
         exact hhead.2.2
       · exact terminalHit_semantic_sound k L specs htail
 
-/-- Certificate data: exact states plus one encoded transition row per state.
+/-!
+### Packed certificate data
 
-Each transition row for state `i` is the single natural number
-`Σ_d next[i][d] * 8192^d`; all target indices are below 8192, so every row
-decodes exactly.  A flat `next` table of `10 * states.size` tiny literals
-overruns the elaborator on large certificates, while one modest literal per
-state elaborates like the state table itself. -/
+Kernel `decide` re-evaluates an array literal at every access with no
+sharing, so a table-shaped certificate costs one full table construction
+per lookup and quickly exhausts both time and memory.  The certificate
+therefore stores both tables as single natural numbers and decodes with
+the kernel's native bitwise operations (`>>>`, `&&&`), which operate
+directly on GMP integers in time linear in the number's size.
+
+Packing layout (little-endian, 13 bits per field, all values below 8192):
+a state occupies `stateBits = 13 * (1 + 2 * laneCount)` bits: the mass,
+then per lane the carry followed by the out-sum.  A transition row occupies
+130 bits: the ten target indices, 13 bits each.
+-/
+
+/-- Certificate data as packed natural numbers plus decoding parameters. -/
 structure CarryCertificate where
   specs : List WitnessSpec
-  states : Array MachineState
-  next : Array ℕ
+  statesPacked : ℕ
+  nextPacked : ℕ
+  /-- Number of encoded states; `stateAt` is only queried below it. -/
+  total : ℕ
+  /-- Bit width of one packed state: `13 * (1 + 2 * laneCount)`. -/
+  stateBits : ℕ
+  laneCount : ℕ
   initial : ℕ
 
-/-- Safe array lookup used by the certificate logic. -/
-def stateAt (cert : CarryCertificate) (i : ℕ) : MachineState :=
-  (cert.states[i]?).getD defaultState
+/-- One multiplication lane decoded from 13-bit fields of a packed state. -/
+def laneOf (s : ℕ) (j : ℕ) : LaneState :=
+  ⟨(s >>> (13 * (1 + 2 * j))) &&& 8191, (s >>> (13 * (2 + 2 * j))) &&& 8191⟩
 
-/-- Transition ID for digit `d`, decoded from the base-8192 row encoding. -/
+/-- A machine state decoded from its packed bit slice. -/
+def decodeState (lanes : ℕ) (s : ℕ) : MachineState :=
+  ⟨s &&& 8191, (List.range lanes).map (laneOf s)⟩
+
+/-- Safe packed lookup used by the certificate logic. -/
+def stateAt (cert : CarryCertificate) (i : ℕ) : MachineState :=
+  decodeState cert.laneCount
+    ((cert.statesPacked >>> (cert.stateBits * i)) &&& (2 ^ cert.stateBits - 1))
+
+/-- Transition ID for digit `d`, decoded from the packed row table. -/
 def nextId (cert : CarryCertificate) (i d : ℕ) : ℕ :=
-  ((cert.next[i]?).getD 0 / 8192 ^ d) % 8192
+  (cert.nextPacked >>> (130 * i + 13 * d)) &&& 8191
 
 /--
 A proof-carrying certificate is valid when the initial state is present,
@@ -216,15 +240,14 @@ every transition compatible with total digit mass `k` is represented exactly,
 and every mass-`k` state has a terminal rescaling hit.
 -/
 def CarryCertificate.Valid (k : ℕ) (cert : CarryCertificate) : Prop :=
-  cert.next.size = cert.states.size ∧
-  cert.initial < cert.states.size ∧
+  cert.initial < cert.total ∧
   stateAt cert cert.initial = initialState cert.specs ∧
-  (∀ i : Fin cert.states.size, ∀ d : Fin 10,
+  (∀ i : Fin cert.total, ∀ d : Fin 10,
       (stateAt cert i.val).mass + d.val ≤ k →
-        nextId cert i.val d.val < cert.states.size ∧
+        nextId cert i.val d.val < cert.total ∧
           stateAt cert (nextId cert i.val d.val) =
             stepState cert.specs (stateAt cert i.val) d.val) ∧
-  (∀ i : Fin cert.states.size,
+  (∀ i : Fin cert.total,
       (stateAt cert i.val).mass = k →
         terminalHit k cert.specs (stateAt cert i.val).lanes = true)
 
@@ -251,7 +274,7 @@ the chunk results with an ordinary proof term.
 def stateOKBool (k : ℕ) (cert : CarryCertificate) (i : ℕ) : Bool :=
   ((List.range 10).all fun d =>
       if (stateAt cert i).mass + d ≤ k then
-        decide (nextId cert i d < cert.states.size) &&
+        decide (nextId cert i d < cert.total) &&
           decide (stateAt cert (nextId cert i d) = stepState cert.specs (stateAt cert i) d)
       else true) &&
   (if (stateAt cert i).mass = k then terminalHit k cert.specs (stateAt cert i).lanes else true)
@@ -260,7 +283,7 @@ theorem stateOK_of_bool {k : ℕ} {cert : CarryCertificate} {i : ℕ}
     (h : stateOKBool k cert i = true) :
     (∀ d : ℕ, d < 10 →
       (stateAt cert i).mass + d ≤ k →
-        nextId cert i d < cert.states.size ∧
+        nextId cert i d < cert.total ∧
           stateAt cert (nextId cert i d) = stepState cert.specs (stateAt cert i) d) ∧
     ((stateAt cert i).mass = k → terminalHit k cert.specs (stateAt cert i).lanes = true) := by
   rw [stateOKBool, Bool.and_eq_true] at h
@@ -274,33 +297,35 @@ theorem stateOK_of_bool {k : ℕ} {cert : CarryCertificate} {i : ℕ}
   · rw [if_pos hmass] at hterm
     exact hterm
 
-/-- Boolean chunk check: every state index in `[lo, hi)` passes `stateOKBool`. -/
+/-- Boolean chunk check: every state index in `[lo, hi)` passes `stateOKBool`.
+Enumerates only the `hi - lo` in-range offsets; enumerating from zero would
+make the cost of a chunk grow with its absolute position. -/
 def rangeOK (k : ℕ) (cert : CarryCertificate) (lo hi : ℕ) : Bool :=
-  (List.range hi).all fun i =>
-    if lo ≤ i then stateOKBool k cert i else true
+  (List.range (hi - lo)).all fun off =>
+    stateOKBool k cert (lo + off)
 
 theorem stateOK_of_rangeOK {k : ℕ} {cert : CarryCertificate} {lo hi i : ℕ}
     (h : rangeOK k cert lo hi = true) (hlo : lo ≤ i) (hhi : i < hi) :
     (∀ d : ℕ, d < 10 →
       (stateAt cert i).mass + d ≤ k →
-        nextId cert i d < cert.states.size ∧
+        nextId cert i d < cert.total ∧
           stateAt cert (nextId cert i d) = stepState cert.specs (stateAt cert i) d) ∧
     ((stateAt cert i).mass = k → terminalHit k cert.specs (stateAt cert i).lanes = true) := by
-  have hmem : i ∈ List.range hi := List.mem_range.mpr hhi
-  have hdall := List.all_eq_true.1 h i hmem
-  rw [if_pos hlo] at hdall
+  have hmem : i - lo ∈ List.range (hi - lo) := List.mem_range.mpr (by omega)
+  have hdall := List.all_eq_true.1 h (i - lo) hmem
+  have hidx : lo + (i - lo) = i := by omega
+  rw [hidx] at hdall
   exact stateOK_of_bool hdall
 
 /-- Assemble `CarryCertificate.Valid` from bounded range checks. -/
 theorem valid_of_rangeOK {k : ℕ} {cert : CarryCertificate}
-    (hsize : cert.next.size = cert.states.size)
-    (hinit : cert.initial < cert.states.size)
+    (hinit : cert.initial < cert.total)
     (hinitstate : stateAt cert cert.initial = initialState cert.specs)
-    (hcover : ∀ i, i < cert.states.size →
+    (hcover : ∀ i, i < cert.total →
       ∃ lo hi, lo ≤ i ∧ i < hi ∧ rangeOK k cert lo hi = true) :
     cert.Valid k := by
   unfold CarryCertificate.Valid
-  refine ⟨hsize, hinit, hinitstate, ?_, ?_⟩
+  refine ⟨hinit, hinitstate, ?_, ?_⟩
   · intro i d hcond
     obtain ⟨lo, hi, hlo, hhi, hok⟩ := hcover i.val i.isLt
     exact (stateOK_of_rangeOK hok hlo hhi).1 d.val d.isLt hcond
@@ -320,17 +345,17 @@ is precisely what makes every requested transition a certified one.
 theorem runIdFrom_sound {k : ℕ} {cert : CarryCertificate}
     (hvalid : cert.Valid k) :
     ∀ {i : ℕ} {s : MachineState} {L : List ℕ},
-      i < cert.states.size →
+      i < cert.total →
       stateAt cert i = s →
       s.mass + L.sum ≤ k →
       (∀ d ∈ L, d < 10) →
       let j := runIdFrom cert i L
-      j < cert.states.size ∧
+      j < cert.total ∧
         stateAt cert j = runMachineFrom cert.specs s L
   | i, s, [], hi, his, hmass, hdigits => by
       simp [runIdFrom, runMachineFrom, hi, his]
   | i, s, d :: ds, hi, his, hmass, hdigits => by
-      rcases hvalid with ⟨hsize, hinitb, hinits, htrans, hterminal⟩
+      rcases hvalid with ⟨hinitb, hinits, htrans, hterminal⟩
       have hd10 : d < 10 := hdigits d (by simp)
       have hstepmass : s.mass + d ≤ k := by
         simp only [List.sum_cons] at hmass
@@ -345,7 +370,7 @@ theorem runIdFrom_sound {k : ℕ} {cert : CarryCertificate}
         intro x hx
         exact hdigits x (List.mem_cons_of_mem d hx)
       have hrec := runIdFrom_sound
-        (k := k) (cert := cert) ⟨hsize, hinitb, hinits, htrans, hterminal⟩
+        (k := k) (cert := cert) ⟨hinitb, hinits, htrans, hterminal⟩
         (i := nextId cert i d) (s := stepState cert.specs s d) (L := ds)
         hnextb (by simpa [his] using hnexts) hremain htaildigits
       simpa [runIdFrom, runMachineFrom] using hrec
@@ -359,13 +384,13 @@ theorem carryObstruction_of_valid_certificate {k : ℕ} {cert : CarryCertificate
   have hdigits : ∀ d ∈ L, d < 10 := by
     intro d hd
     exact Nat.digits_lt_base (by norm_num : 1 < 10) (by simpa [L] using hd)
-  rcases hvalid with ⟨hsize, hinitb, hinits, htrans, hterminal⟩
+  rcases hvalid with ⟨hinitb, hinits, htrans, hterminal⟩
   have hwalk := runIdFrom_sound
-    (k := k) (cert := cert) ⟨hsize, hinitb, hinits, htrans, hterminal⟩
+    (k := k) (cert := cert) ⟨hinitb, hinits, htrans, hterminal⟩
     (i := cert.initial) (s := initialState cert.specs) (L := L)
     hinitb hinits (by simp [initialState, hsum]) hdigits
   let finalId := runIdFrom cert cert.initial L
-  have hfinalb : finalId < cert.states.size := by simpa [finalId] using hwalk.1
+  have hfinalb : finalId < cert.total := by simpa [finalId] using hwalk.1
   have hfinals : stateAt cert finalId = runMachine cert.specs L := by
     simpa [finalId, runMachine] using hwalk.2
   have hmass : (stateAt cert finalId).mass = k := by
