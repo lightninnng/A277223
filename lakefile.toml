@@ -1,4 +1,4 @@
-name = "A277223Formal"
+name = "A277223"
 version = "0.1.0"
 defaultTargets = ["A277223"]
 
