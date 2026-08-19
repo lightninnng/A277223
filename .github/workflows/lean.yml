@@ -70,10 +70,5 @@ jobs:
         with:
           build: true
           use-mathlib-cache: true
-          # The project-artifact cache restore can overwrite the traces of the
-          # sequential prebuild above with stale ones (any source edit changes
-          # file hashes), which makes this step rebuild all four heavy chains
-          # in parallel and exhaust the runner.  Mathlib caching above is
-          # independent and unaffected.
           use-github-cache: false
           leanchecker: true
