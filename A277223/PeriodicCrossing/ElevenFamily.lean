@@ -75,8 +75,9 @@ theorem N11Family_good (t : ℕ) : Good (N11Family t) 11 := by
   rw [digitSum10_append h2]
   decide
 
-/-- The two exceptional residue classes are exactly five and ten. -/
-def special11 (r : ℕ) : Prop := r = 5 ∨ r = 10
+/-- The two exceptional residue classes are exactly five and ten.
+Reducible so that instance synthesis unfolds it for `decide`. -/
+@[reducible] def special11 (r : ℕ) : Prop := r = 5 ∨ r = 10
 
 theorem N11Family_local_data {r : ℕ} (hr0 : 0 < r) (hr11 : r < 11) :
     digitSum10 (a11 r * 9) = 9 ∧
