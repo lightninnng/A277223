@@ -62,6 +62,7 @@ theorem one_maxGood_nine : MaxGood 1 9 := by
 theorem five_fifty_eight_mul_lt_pow {L : ℕ} (hL : 5 ≤ L) :
     558 * L < 10 ^ (L - 1) := by
   obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hL
+  clear hL
   induction d with
   | zero => norm_num
   | succ d ih =>
@@ -93,7 +94,7 @@ theorem good_62_le_36 {k : ℕ} (hkpos : 0 < k) (hk : Good 62 k) : k ≤ 36 := b
     omega
   have hLpos : 0 < L := by omega
   have hpow : 10 ^ (L - 1) ≤ x := by
-    have hpred : L - 1 < (Nat.digits 10 x).length := by simpa [L] using Nat.pred_lt hLpos
+    have hpred : L - 1 < (Nat.digits 10 x).length := by simpa [L] using Nat.pred_lt (by omega)
     exact (Nat.lt_digits_length_iff (by norm_num : 1 < 10) x).1 hpred
   have hxupper : x ≤ 558 * L := by
     dsimp [x]
@@ -119,10 +120,10 @@ theorem nine_dvd_good_62 {k : ℕ} (hk : Good 62 k) : 9 ∣ k := by
     exact Nat.mod_lt _ (by norm_num)
   have hmodr : (8 * r) % 9 = r := by simpa [r] using hmod'
   have hr0 : r = 0 := by
-    interval_cases r <;> norm_num at hmodr ⊢
+    interval_cases r <;> norm_num at hmodr <;> omega
   refine ⟨k / 9, ?_⟩
   have hdecomp := Nat.mod_add_div k 9
-  rw [hr0] at hdecomp
+  rw [show k % 9 = r from rfl, hr0] at hdecomp
   omega
 
 /-- The four possible positive multipliers left by the preceding two lemmas all fail. -/
