@@ -16,30 +16,30 @@ digit-sum multiplier problem underlying [OEIS A277223](https://oeis.org/A277223)
 For a positive integer $n$, let $s(x)$ denote the decimal digit sum, and define
 
 $$
-\operatorname{Good}(n,k) \;\iff\; s(kn) = k,
+\mathrm{Good}(n,k) \iff s(kn) = k,
 \qquad
-\operatorname{MaxGood}(n,k) \;\iff\; \operatorname{Good}(n,k) \text{ and } \operatorname{Good}(n,j) \Rightarrow j \le k .
+\mathrm{MaxGood}(n,k) \iff \mathrm{Good}(n,k) \ \text{and} \ \mathrm{Good}(n,j) \Rightarrow j \le k .
 $$
 
 Equivalently, if $a(n)$ is the largest positive Good multiplier of $n$
-(or $0$ when none exists), then $\operatorname{MaxGood}(n,k) \iff a(n) = k$.
+(or $0$ when none exists), then $\mathrm{MaxGood}(n,k) \iff a(n) = k$.
 
 ## Main theorem
 
 The exact spectrum of maximal Good multipliers below $12$ is
 
 $$
-\bigl(k < 12 \ \wedge\ \exists n,\ \operatorname{MaxGood}(n,k)\bigr)
-\ \iff\ k \in \{0,\; 7,\; 9,\; 11\},
-\qquad\text{ i.e. }\qquad
-\{\, a(n) : a(n) < 12 \,\} = \{0, 7, 9, 11\}.
+(k < 12 \ \wedge\ \exists n,\ \mathrm{MaxGood}(n,k))
+\ \iff\ k \in \{0, 7, 9, 11\},
 $$
+
+that is, $\{a(n) : a(n) < 12\} = \{0, 7, 9, 11\}$.
 
 The values $7$ and $11$ are realized by **explicit infinite families**;
 distinct members of a family are never related by multiplication by a
 positive power of $10$.
 
-| $k$ | $0$ | $7$ | $9$ | $11$ | $1$–$6,\,8,\,10$ |
+| $k$ | $0$ | $7$ | $9$ | $11$ | $1$–$6$, $8$, $10$ |
 |---|---|---|---|---|---|
 | realized by | $n = 62$ | $N_7(t)$ for all $t$ | $n = 1$ | $N_{11}(t)$ for all $t$ | never (carry obstruction) |
 
@@ -54,9 +54,11 @@ The proof has two independent structural components.
 If $m = kn$ and a decimal rescaling satisfies
 
 $$
-c \cdot k = j \cdot 10^{z},
-\qquad j > k,
-\qquad s(c \cdot m) = j,
+ck = j \cdot 10^{z},
+\qquad
+j > k,
+\qquad
+s(cm) = j,
 $$
 
 then $j$ is a larger Good multiplier for the same $n$. An exact
@@ -79,7 +81,7 @@ For fixed $N$ define the defect $\Delta_N(k) = s(kN) - k$. If $p$ is Good,
 digit-sum subadditivity implies
 
 $$
-\Delta_N(k + p) \;\le\; \Delta_N(k),
+\Delta_N(k + p) \le \Delta_N(k),
 $$
 
 so every residue-class sequence modulo $p$ is antitone. A strict adjacent
@@ -98,13 +100,13 @@ parameterized families in `PeriodicCrossing/SevenFamily.lean` and
 $$
 M_7(0) = 25,
 \qquad
-M_7(t+1) = 10^{6} \, M_7(t) + 925\,925,
+M_7(t+1) = 10^{6} M_7(t) + 925925,
 \qquad
-N_7(t) = \frac{5 \cdot 10^{\,6 M_7(t) + 2} + 11}{7}.
+N_7(t) = \frac{5 \cdot 10^{6 M_7(t) + 2} + 11}{7}.
 $$
 
-Then $\operatorname{MaxGood}\bigl(N_7(t),\, 7\bigr)$ for every $t$; the first
-member is the $152$-digit witness
+Then $\mathrm{MaxGood}(N_7(t), 7)$ for every $t$; the first member is the
+$152$-digit witness
 
 $$
 N_7(0) = \frac{5 \cdot 10^{152} + 11}{7}.
@@ -113,15 +115,15 @@ $$
 **The eleven family.** For $t \ge 0$ define
 
 $$
-M_{11}(0) = 12\,219,
+M_{11}(0) = 12219,
 \qquad
-M_{11}(t+1) = 100 \, M_{11}(t) + 319,
+M_{11}(t+1) = 100 M_{11}(t) + 319,
 \qquad
-N_{11}(t) = \frac{9 \cdot 10^{\,2 M_{11}(t) + 2} + 2}{11}.
+N_{11}(t) = \frac{9 \cdot 10^{2 M_{11}(t) + 2} + 2}{11}.
 $$
 
-Then $\operatorname{MaxGood}\bigl(N_{11}(t),\, 11\bigr)$ for every $t$. The
-compact $52$-digit witness
+Then $\mathrm{MaxGood}(N_{11}(t), 11)$ for every $t$. The compact
+$52$-digit witness
 
 $$
 \frac{9 \cdot 10^{52} + 2}{11}
