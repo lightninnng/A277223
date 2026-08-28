@@ -1,4 +1,4 @@
-import A277223.CarryObstruction.Small
+import A277223.CarryObstruction.Forbidden
 import A277223.Witnesses
 import A277223.PeriodicCrossing.SevenFamily
 import A277223.PeriodicCrossing.ElevenFamily
