@@ -1,5 +1,7 @@
 # Carry Obstructions and Infinite Periodic Crossings for OEIS A277223
 
+![CI](https://github.com/lightninnng/A277223/actions/workflows/lean.yml/badge.svg)
+
 This repository contains the manuscript, Lean 4 formalization, and reproducibility checks for a decimal digit-sum multiplier problem underlying OEIS A277223.
 
 Manuscript: [`paper/main.pdf`](paper/main.pdf) · Source: [`paper/main.tex`](paper/main.tex)
