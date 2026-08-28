@@ -1,173 +1,198 @@
 # Carry Obstructions and Infinite Periodic Crossings for OEIS A277223
 
 ![CI](https://github.com/lightninnng/A277223/actions/workflows/lean.yml/badge.svg)
+![Lean 4.32.2](https://img.shields.io/badge/Lean-4.32.2-blue)
+![Mathlib v4.32.2](https://img.shields.io/badge/Mathlib-v4.32.2-orange)
 
-This repository contains the manuscript, Lean 4 formalization, and reproducibility checks for a decimal digit-sum multiplier problem underlying OEIS A277223.
+Manuscript, Lean 4 formalization, and reproducibility checks for a decimal
+digit-sum multiplier problem underlying [OEIS A277223](https://oeis.org/A277223).
 
-Manuscript: [`paper/main.pdf`](paper/main.pdf) · Source: [`paper/main.tex`](paper/main.tex)
+**Manuscript** [`paper/main.pdf`](paper/main.pdf) · **LaTeX source** [`paper/main.tex`](paper/main.tex) · **Trust model** [`VERIFICATION.md`](VERIFICATION.md)
 
-For a positive integer `n`, let `s(x)` denote the decimal digit sum and define
+---
 
-```text
-Good(n,k)    :<=> s(k*n) = k
-MaxGood(n,k) :<=> Good(n,k) and every Good(n,j) has j <= k.
-```
+## The problem
 
-The principal result is the exact spectrum below 12:
+For a positive integer $n$, let $s(x)$ denote the decimal digit sum, and define
 
-```text
-(k < 12 and exists n, MaxGood(n,k))
-  <=> k = 0 or k = 7 or k = 9 or k = 11.
-```
+$$
+\operatorname{Good}(n,k) \;\iff\; s(kn) = k,
+\qquad
+\operatorname{MaxGood}(n,k) \;\iff\; \operatorname{Good}(n,k) \text{ and } \operatorname{Good}(n,j) \Rightarrow j \le k .
+$$
 
-Equivalently, if `a(n)` is the largest positive Good multiplier (or `0` when none exists), then
+Equivalently, if $a(n)$ is the largest positive Good multiplier of $n$
+(or $0$ when none exists), then $\operatorname{MaxGood}(n,k) \iff a(n) = k$.
 
-```text
-{ a(n) : a(n) < 12 } = {0,7,9,11}.
-```
+## Main theorem
 
-The values `7` and `11` are realized by explicit infinite families. Within each family, distinct members are not related by multiplication by a positive power of `10`.
+The exact spectrum of maximal Good multipliers below $12$ is
+
+$$
+\bigl(k < 12 \ \wedge\ \exists n,\ \operatorname{MaxGood}(n,k)\bigr)
+\ \iff\ k \in \{0,\; 7,\; 9,\; 11\},
+\qquad\text{ i.e. }\qquad
+\{\, a(n) : a(n) < 12 \,\} = \{0, 7, 9, 11\}.
+$$
+
+The values $7$ and $11$ are realized by **explicit infinite families**;
+distinct members of a family are never related by multiplication by a
+positive power of $10$.
+
+| $k$ | $0$ | $7$ | $9$ | $11$ | $1$–$6,\,8,\,10$ |
+|---|---|---|---|---|---|
+| realized by | $n = 62$ | $N_7(t)$ for all $t$ | $n = 1$ | $N_{11}(t)$ for all $t$ | never (carry obstruction) |
+
+---
 
 ## Mathematical structure
 
 The proof has two independent structural components.
 
-### Carry obstruction
+### 1 · Carry obstruction
 
-If `m = k*n` and a decimal rescaling satisfies
+If $m = kn$ and a decimal rescaling satisfies
 
-```text
-c*k = j*10^z,  j > k,  s(c*m) = j,
-```
+$$
+c \cdot k = j \cdot 10^{z},
+\qquad j > k,
+\qquad s(c \cdot m) = j,
+$$
 
-then `j` is a larger Good multiplier for the same `n`. An exact carry-defect identity and first-carry localization reduce the small cases to finite local digit configurations. This excludes
+then $j$ is a larger Good multiplier for the same $n$. An exact
+carry-defect identity and first-carry localization reduce the small cases
+to finite local digit configurations, which excludes
 
-```text
-1,2,3,4,5,6,8,10
-```
+$$
+k \in \{1, 2, 3, 4, 5, 6, 8, 10\}
+$$
 
-as maximal Good multipliers. The manuscript gives a human-checkable obstruction tree. For `k=8` and `k=10`, Lean verifies the same conclusion independently through exact schoolbook-multiplication certificates over arbitrary decimal digit strings of total digit mass 8 and 10.
+as maximal Good multipliers. The manuscript gives a human-checkable
+obstruction tree; for $k = 8$ and $k = 10$, Lean verifies the same
+conclusion independently through exact schoolbook-multiplication
+certificates over arbitrary decimal digit strings of total digit mass $8$
+and $10$.
 
-### Periodic crossing
+### 2 · Periodic crossing
 
-For fixed `N`, define
+For fixed $N$ define the defect $\Delta_N(k) = s(kN) - k$. If $p$ is Good,
+digit-sum subadditivity implies
 
-```text
-Delta_N(k) = s(k*N) - k.
-```
+$$
+\Delta_N(k + p) \;\le\; \Delta_N(k),
+$$
 
-If `p` is Good, digit-sum subadditivity implies
+so every residue-class sequence modulo $p$ is antitone. A strict adjacent
+positive-to-negative crossing in each nonzero residue class, together with
+a negative second point in the zero residue class, proves that $p$ is the
+unique positive Good multiplier. This mechanism produces the two
+parameterized families in `PeriodicCrossing/SevenFamily.lean` and
+`PeriodicCrossing/ElevenFamily.lean`.
 
-```text
-Delta_N(k+p) <= Delta_N(k).
-```
-
-Thus each residue-class sequence modulo `p` is antitone. A strict adjacent positive-to-negative crossing in every nonzero residue class, together with a negative second point in the zero residue class, proves that `p` is the unique positive Good multiplier.
-
-This mechanism produces the two parameterized families formalized in
-`PeriodicCrossing/SevenFamily.lean` and `PeriodicCrossing/ElevenFamily.lean`.
+---
 
 ## Infinite families
 
-For `t >= 0`, define
+**The seven family.** For $t \ge 0$ define
 
-```text
-M7(0)     = 25
-M7(t + 1) = 10^6*M7(t) + 925925
-N7(t)     = (5*10^(6*M7(t)+2) + 11) / 7.
-```
+$$
+M_7(0) = 25,
+\qquad
+M_7(t+1) = 10^{6} \, M_7(t) + 925\,925,
+\qquad
+N_7(t) = \frac{5 \cdot 10^{\,6 M_7(t) + 2} + 11}{7}.
+$$
 
-Then `MaxGood(N7(t),7)` for every `t`. In particular,
+Then $\operatorname{MaxGood}\bigl(N_7(t),\, 7\bigr)$ for every $t$; the first
+member is the $152$-digit witness
 
-```text
-N7(0) = (5*10^152 + 11) / 7.
-```
+$$
+N_7(0) = \frac{5 \cdot 10^{152} + 11}{7}.
+$$
 
-Similarly, define
+**The eleven family.** For $t \ge 0$ define
 
-```text
-M11(0)     = 12219
-M11(t + 1) = 100*M11(t) + 319
-N11(t)     = (9*10^(2*M11(t)+2) + 2) / 11.
-```
+$$
+M_{11}(0) = 12\,219,
+\qquad
+M_{11}(t+1) = 100 \, M_{11}(t) + 319,
+\qquad
+N_{11}(t) = \frac{9 \cdot 10^{\,2 M_{11}(t) + 2} + 2}{11}.
+$$
 
-Then `MaxGood(N11(t),11)` for every `t`. The explicit 52-digit witness
+Then $\operatorname{MaxGood}\bigl(N_{11}(t),\, 11\bigr)$ for every $t$. The
+compact $52$-digit witness
 
-```text
-(9*10^52 + 2) / 11
-```
+$$
+\frac{9 \cdot 10^{52} + 2}{11}
+$$
 
-is included as a separate explicit example.
+is included as a separate explicit example (it is not a member of the
+pure-power family above).
 
-Distinct members within either parameterized family are not related by multiplication by a positive power of 10.
+---
 
 ## Repository layout
 
 ```text
 A277223/
-  Basic.lean
+  Basic.lean                    digit sums, Good / MaxGood definitions
   CarryObstruction/
-    Theory.lean
-    Certificate.lean
-    EightData.lean
-    Eight.lean
-    TenData.lean
-    Ten.lean
-    Small.lean
+    Theory.lean                 structural obstruction for k ≤ 6
+    Certificate.lean            packed certificates + soundness theorem
+    EightData.lean, Eight.lean  kernel-checked k = 8 machine (7608 states)
+    TenData.lean,   Ten.lean    kernel-checked k = 10 machine (1543 states)
+    Small.lean                  unified exclusion of the forbidden values
   PeriodicCrossing/
-    Defect.lean
-    Blocks.lean
-    AlignedUpdate.lean
-    Seven.lean
-    Eleven.lean
-    SevenFamily.lean
-    ElevenFamily.lean
-  Witnesses.lean
-  Main.lean
-paper/
-  main.tex
-  main.pdf
-scripts/
-  generate_carry_certificates.py
-  arithmetic_audit.py
-  infinite_family_audit.py
-  static_lean_audit.py
-  verify.sh
-.github/workflows/lean.yml
-VERIFICATION.md
+    Defect.lean, Blocks.lean    defect antitonicity, block normal form
+    AlignedUpdate.lean          generic repeated-block update lemma
+    Seven.lean,   SevenFamily.lean    the infinite seven family
+    Eleven.lean, ElevenFamily.lean    the infinite eleven family
+  Witnesses.lean                n = 62 and n = 1 spectrum endpoints
+  Main.lean                     assembly: full spectrum + infinitude
+paper/                          manuscript (LaTeX + PDF)
+scripts/                        certificate generator + independent audits
+.github/workflows/lean.yml      the CI verification gate
+VERIFICATION.md                 exact verification and trust model
 ```
 
 ## Reproducibility
 
-The project is pinned to Lean `4.32.2` and Mathlib `v4.32.2`. With Python 3, Lean/Lake, and LaTeX available, run
+The project is pinned to Lean `4.32.2` and Mathlib `v4.32.2`. With Python 3,
+Lean/Lake, and LaTeX available:
 
 ```bash
-./scripts/verify.sh
+./scripts/verify.sh          # everything below in one script
 ```
 
-or execute the layers separately:
+or layer by layer:
 
 ```bash
-python3 scripts/generate_carry_certificates.py
-python3 scripts/arithmetic_audit.py
-python3 scripts/infinite_family_audit.py
-python3 scripts/static_lean_audit.py
-lake exe cache get
-lake build
+python3 scripts/generate_carry_certificates.py   # regenerate certificate sources
+python3 scripts/arithmetic_audit.py              # independent arithmetic checks
+python3 scripts/infinite_family_audit.py         # family recurrences and crossings
+python3 scripts/static_lean_audit.py             # source-level trust-boundary scan
+lake exe cache get                              # fetch the pinned Mathlib cache
+lake build                                       # all sixteen modules
 ```
 
-To build the manuscript:
+The manuscript builds with `make paper`.
 
-```bash
-make paper
-```
-
-The GitHub Actions workflow regenerates the certificate sources and rejects drift, runs the independent arithmetic and source checks, builds memory-intensive modules sequentially to bound peak runner memory, performs a final whole-project `lake build`, and runs `leanchecker` through `leanprover/lean-action`.
-
-See [VERIFICATION.md](VERIFICATION.md) for the exact verification and trust model.
+The GitHub Actions workflow regenerates the certificate sources and rejects
+drift, runs the independent arithmetic and source checks, builds the
+memory-intensive modules sequentially to bound peak runner memory, performs a
+final whole-project `lake build`, and re-checks the entire environment with
+`leanchecker` via `leanprover/lean-action`.
 
 ## Proof and trust boundary
 
-The mathematical proof in `paper/main.tex` is self-contained. The Lean development is a supplementary machine-checked verification of the main theorem and the two infinite families.
+The mathematical proof in `paper/main.tex` is self-contained. The Lean
+development is a supplementary machine-checked verification of the main
+theorem and the two infinite families.
 
-The Python programs are not trusted proof oracles. In particular, `generate_carry_certificates.py` emits finite tables, but the resulting certificate obligations are rechecked inside Lean with kernel reduction and a proved soundness theorem. The arithmetic scripts provide independent regression checks only.
+The Python programs are **not** trusted proof oracles:
+`generate_carry_certificates.py` emits finite tables, but the resulting
+certificate obligations are rechecked inside Lean with kernel reduction and a
+proved soundness theorem (`Certificate.lean`); the arithmetic scripts provide
+independent regression checks only. See
+[VERIFICATION.md](VERIFICATION.md) for the exact trust model.
