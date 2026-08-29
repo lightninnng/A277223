@@ -11,3 +11,4 @@ paper/*.out
 paper/*.synctex.gz
 run_logs.zip
 _ci_tmp.log
+tools/
