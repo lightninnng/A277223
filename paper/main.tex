@@ -981,25 +981,6 @@ The two infinite families show that the terminal values $7$ and $11$ are not iso
 \section*{Data and code availability}
 The companion repository contains the Lean sources, certificate generator, independent arithmetic checks, CI configuration, and manuscript source.  Reproducible machine verification is tied to the exact repository commit and its successful pinned CI run; the mathematical proofs in this article are self-contained.
 
-\section*{About this project}
-This work determines the exact spectrum of maximal decimal digit-sum
-multipliers below $12$ for the sequence underlying OEIS A277223 and proves
-that the terminal values $7$ and $11$ occur in explicit infinite
-periodic-crossing families.  Its contributions are: a self-contained
-mathematical proof organized around two independent mechanisms (carry
-obstruction and periodic crossing); two concrete infinite families with
-arithmetic that can be checked by hand; and a supplementary Lean
-4 formalization in which every layer---including the finite carry
-certificates---is re-verified by the Lean kernel and by an independent
-type checker, with a fully reproducible CI pipeline.
-
-The proofs, the Lean formalization, and the verification infrastructure
-in the companion repository were developed with the assistance of
-GLM~5.3, a large language model trained by Z.ai.  All mathematical
-claims were verified by the pinned Lean~4.32.2 kernel and re-checked
-by \texttt{leanchecker}; the AI system was used as a proof assistant,
-not as a trusted oracle.
-
 \begin{thebibliography}{9}
 \bibitem{oeisA277223}
 The On-Line Encyclopedia of Integer Sequences, \emph{A277223}, ``$a(n)=\mathrm{A052489}(n)/n$,'' accessed August 2026.
